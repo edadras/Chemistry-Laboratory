@@ -163,6 +163,36 @@ def test_expanded_drug_count():
     assert len(all_drugs()) >= 40
 
 
+def test_thermo_combustion_enthalpy():
+    eng = ReactionEngine()
+    out = eng.predict([Molecule.parse("methane"), Molecule.from_smiles("O=O")],
+                      Conditions(temperature_c=600))
+    comb = [o for o in out if o.rule_id == "combustion"][0]
+    th = comb.thermodynamics()
+    # bond-enthalpy estimate for CH4 combustion ≈ -802 kJ/mol
+    assert -850 < th["delta_h_kj"] < -750
+    assert "exothermic" in th["type_fa"]
+    assert "خودبه‌خودی" in th["spontaneity_fa"]
+
+
+def test_kinetics_yield_and_rate():
+    eng = ReactionEngine()
+    cond = Conditions(temperature_c=80, catalyst="H2SO4")
+    out = eng.predict([Molecule.parse("acetic acid"), Molecule.parse("ethanol")], cond)
+    est = [o for o in out if o.rule_id == "esterification"][0]
+    kin = est.kinetics()
+    assert kin["feasible"] and 0 < kin["estimated_yield_pct"] <= 100
+    assert kin["relative_rate"] > 1  # faster than at 25°C
+
+
+def test_kinetics_infeasible_zero_yield():
+    eng = ReactionEngine()
+    out = eng.predict([Molecule.parse("acetic acid"), Molecule.parse("ethanol")],
+                      Conditions())  # no catalyst/heat
+    est = [o for o in out if o.rule_id == "esterification"][0]
+    assert est.kinetics()["estimated_yield_pct"] == 0
+
+
 def test_drug_profile():
     asp = Molecule.parse("آسپرین")
     prof = DrugProfile(asp).to_dict()

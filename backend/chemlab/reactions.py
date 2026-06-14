@@ -23,6 +23,7 @@ from .conditions import Conditions, Technique
 from .molecule import Molecule
 from .reaction_data import REACTION_RULES, ReactionRule
 from .balance import balance
+from .thermo import thermodynamics, kinetics
 
 
 # Pre-compile and validate all rule SMARTS once.
@@ -50,12 +51,33 @@ class Outcome:
     category: str
     description_fa: str
     reactants_used: list[Molecule] = field(default_factory=list)
+    conditions: Conditions | None = None
 
     def balanced(self) -> dict | None:
         if not self.reactants_used:
             return None
         try:
             return balance(self.reactants_used, self.products)
+        except Exception:
+            return None
+
+    def thermodynamics(self, bal: dict | None = None) -> dict | None:
+        if not self.reactants_used:
+            return None
+        bal = bal if bal is not None else self.balanced()
+        r_c = bal["reactant_coeffs"] if bal else None
+        p_c = bal["product_coeffs"] if bal else None
+        T = self.conditions.temperature_k if self.conditions else 298.15
+        try:
+            return thermodynamics(self.reactants_used, self.products, r_c, p_c, T)
+        except Exception:
+            return None
+
+    def kinetics(self) -> dict | None:
+        if self.conditions is None:
+            return None
+        try:
+            return kinetics(self.rule_id, self.feasible, self.conditions)
         except Exception:
             return None
 
@@ -72,6 +94,8 @@ class Outcome:
             "product_summary": " + ".join(p.formula for p in self.products),
             "reactants_used": [m.formula for m in self.reactants_used],
             "balanced_equation": bal["equation_fa"] if bal else None,
+            "thermodynamics": self.thermodynamics(bal),
+            "kinetics": self.kinetics(),
         }
 
 
@@ -138,6 +162,7 @@ class ReactionEngine:
                 category="inorganic",
                 description_fa="اسید + باز ⟶ نمک + آب",
                 reactants_used=[acid, base],
+                conditions=cond,
             ))
 
         # Combustion: hydrocarbon (C,H[,O] only) + O2 -> CO2 + H2O
@@ -153,6 +178,7 @@ class ReactionEngine:
                 category="inorganic",
                 description_fa="هیدروکربن + O₂ ⟶ CO₂ + H₂O (+ انرژی)",
                 reactants_used=[fuel, o2],
+                conditions=cond,
             ))
         return outcomes
 
@@ -188,6 +214,7 @@ class ReactionEngine:
                 category=rule.category,
                 description_fa=rule.description_fa,
                 reactants_used=used,
+                conditions=cond,
             ))
         outcomes.extend(self._special_reactions(reactants, cond))
         # feasible first

@@ -66,6 +66,24 @@
   .examples{margin-top:6px}
   .examples span{cursor:pointer;color:var(--accent);font-size:12px;margin-left:10px;
         text-decoration:underline dotted}
+  /* synthesis flow diagram */
+  .flow{display:flex;flex-direction:column;align-items:center;gap:0;margin:14px 0}
+  .flow .node{background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+        padding:8px 14px;font-weight:700;text-align:center;min-width:90px}
+  .flow .node.start{border-color:var(--accent);color:var(--accent)}
+  .flow .node.final{border-color:var(--ok);color:var(--ok);font-size:16px}
+  .flow .reagents{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .flow .arrow{display:flex;flex-direction:column;align-items:center;color:var(--muted);
+        padding:2px 0}
+  .flow .arrow .cond{font-size:11px;background:#10243a;border:1px solid #1d4250;color:var(--accent);
+        border-radius:14px;padding:1px 10px;margin-bottom:2px;max-width:340px}
+  .flow .arrow .line{font-size:20px;line-height:1}
+  .flow .plus{color:var(--muted);align-self:center;font-size:18px}
+  .thermo{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .thermo .pill{background:var(--panel);border:1px solid var(--border);border-radius:8px;
+        padding:4px 10px;font-size:12px}
+  .bar{height:8px;background:#10243a;border-radius:6px;overflow:hidden;margin-top:4px;border:1px solid var(--border)}
+  .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--ok))}
 </style>
 </head>
 <body>
@@ -179,6 +197,7 @@ async function runReact(){
         <span class="tag ${mp.feasible?'ok':'bad'}">${mp.feasible?'شدنی':'غیرشدنی در این شرایط'}</span></h4>`;
       html+=`<div class="hint">${mp.description_fa} — ${mp.reason_fa}</div>`;
       if(mp.balanced_equation){ html+=`<div class="summary">معادله موازنه‌شده: <b>${mp.balanced_equation}</b></div>`; }
+      if(mp.thermodynamics||mp.kinetics){ html+=thermoKinBlock(mp.thermodynamics,mp.kinetics); }
       html+=mp.products.map(p=>molCard(p)).join('');
       mp.products.forEach(p=>{html+=bondsTable(p);});
     }
@@ -209,6 +228,43 @@ function pharmaBlock(f,pr){
     <div>${alerts}</div>
     <div class="summary">${pr.verdict_fa}</div>
   </div></div>`;
+}
+
+function thermoKinBlock(th,kin){
+  let html='<div class="thermo">';
+  if(th){
+    html+=`<span class="pill">ΔH = <b>${th.delta_h_kj}</b> kJ/mol · ${th.type_fa}</span>`;
+    html+=`<span class="pill">ΔG ≈ <b>${th.delta_g_kj}</b> kJ/mol</span>`;
+    html+=`<span class="pill">${th.spontaneity_fa}</span>`;
+  }
+  if(kin){
+    html+=`<span class="pill">سرعت: <b>${kin.rate_fa}</b></span>`;
+    if(kin.relative_rate!==undefined) html+=`<span class="pill">نرخ نسبی (×۲۵°C): <b>${kin.relative_rate}</b></span>`;
+  }
+  html+='</div>';
+  if(kin&&kin.estimated_yield_pct!==undefined){
+    html+=`<div class="kv">بازده تخمینی: <b>${kin.estimated_yield_pct}%</b> — ${kin.note_fa||''}</div>
+      <div class="bar"><span style="width:${kin.estimated_yield_pct}%"></span></div>`;
+  }
+  if(th&&th.is_estimate) html+=`<div class="hint">${th.note_fa}</div>`;
+  return html;
+}
+
+// build a CSS flow diagram for a multi-step synthesis
+function flowDiagram(steps, startingMaterials, finalFormula){
+  let html='<div class="flow">';
+  html+=`<div class="reagents">${startingMaterials.map(m=>`<div class="node start">${m.known_name?m.known_name+' ':''}${m.formula}</div>`).join('<span class="plus">+</span>')}</div>`;
+  steps.forEach((s,i)=>{
+    const cond=s.conditions_note_fa||'';
+    const th=s.thermodynamics?` · ΔH=${s.thermodynamics.delta_h_kj}kJ`:'';
+    const yld=s.kinetics?` · بازده ~${s.kinetics.estimated_yield_pct}%`:'';
+    html+=`<div class="arrow"><div class="cond">${cond}${th}${yld}</div><div class="line">↓</div>
+      <div class="hint">${s.disconnection}${s.forward_confirmed?' ✓':''}</div></div>`;
+    const isFinal=(i===steps.length-1);
+    html+=`<div class="node ${isFinal?'final':''}">${s.product}</div>`;
+  });
+  html+='</div>';
+  return html;
 }
 
 // ============ TAB: REVERSE ============
@@ -367,15 +423,18 @@ async function runSynth(){
     if(res.drug_info){ html+=`<div class="hint">دارو: <b>${res.drug_info.name_fa||res.drug_info.name}</b> — ${res.drug_info.indication_fa||''} (${res.drug_info.drug_class_fa||''})</div>`; }
     html+=`<h4>هدف</h4>`+molCard(res.target);
     if(res.multistep){
-      html+=`<h4>مواد اولیه</h4><div>${res.starting_materials.map(m=>`<span class="tag">${m.known_name?m.known_name+' ':''}${m.formula}</span>`).join('')}</div>`;
-      html+=`<h4>مراحل سنتز (${res.steps.length}) — از مواد اولیه تا دارو</h4>`;
+      if(res.steps.length){
+        html+=`<h4>نمودار مسیر سنتز</h4>`+flowDiagram(res.steps,res.starting_materials,res.target.formula);
+      }
+      html+=`<h4>جزئیات مراحل (${res.steps.length}) — از مواد اولیه تا دارو</h4>`;
       res.steps.forEach((s,i)=>{
         html+=`<div class="card" style="background:var(--panel2)">
           <div><b>مرحله ${i+1}</b> <span class="tag ${s.forward_confirmed?'ok':'muted'}">${s.forward_confirmed?'✓ تأیید رو‌به‌جلو':'پیشنهادی'}</span></div>
           <div style="font-size:15px;margin:6px 0"><b>${s.precursor_summary}</b> ⟶ <b>${s.product}</b></div>
           <div class="kv">${s.explanation_fa}</div>
           ${s.balanced_equation?`<div class="kv">معادله موازنه‌شده: <b>${s.balanced_equation}</b></div>`:''}
-          <div class="summary">شرایط: ${s.conditions_note_fa}</div></div>`;
+          <div class="summary">شرایط: ${s.conditions_note_fa}</div>
+          ${(s.thermodynamics||s.kinetics)?thermoKinBlock(s.thermodynamics,s.kinetics):''}</div>`;
       });
     } else {
       html+=`<h4>مسیرهای سنتز پیشنهادی (${res.routes.length})</h4>`;
@@ -387,7 +446,8 @@ async function runSynth(){
           <div class="kv">پیش‌سازها: <b>${rt.precursor_summary}</b></div>
           ${rt.balanced_equation?`<div class="kv">معادله موازنه‌شده: <b>${rt.balanced_equation}</b></div>`:''}
           <div class="summary">شرایط پیشنهادی: ${rt.conditions_note_fa}<br>
-            <span class="hint">${rt.conditions.description_fa}</span></div>`+
+            <span class="hint">${rt.conditions.description_fa}</span></div>
+          ${(rt.thermodynamics||rt.kinetics)?thermoKinBlock(rt.thermodynamics,rt.kinetics):''}`+
           rt.precursors.map(p=>molCard(p)).join('')+`</div>`;
       });
     }

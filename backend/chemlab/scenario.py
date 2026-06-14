@@ -137,13 +137,15 @@ class ScenarioProcessor:
         target_canon = Chem.CanonSmiles(target.smiles)
         cond, note = _SYNTH_CONDITIONS.get(step.rule_id, (Conditions(), "شرایط استاندارد"))
         confirmed = False
-        balanced = None
+        balanced = thermo = kin = None
         outcomes = self.engine.predict(step.precursors, cond, include_infeasible=True)
         for oc in outcomes:
             if any(_canon_eq(p.smiles, target_canon) for p in oc.products):
                 confirmed = True
                 bal = oc.balanced()
                 balanced = bal["equation_fa"] if bal else None
+                thermo = oc.thermodynamics(bal)
+                kin = oc.kinetics()
                 break
         return {
             "product": target.formula,
@@ -156,6 +158,8 @@ class ScenarioProcessor:
             "conditions_note_fa": note,
             "forward_confirmed": confirmed,
             "balanced_equation": balanced,
+            "thermodynamics": thermo,
+            "kinetics": kin,
         }
 
     def synthesize(self, target_input: str, multistep: bool = False,
