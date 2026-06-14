@@ -20,6 +20,8 @@ from .retrosynthesis import Retrosynthesizer
 from .hypothesis import HypothesisEngine
 from .pharma import DrugProfile, indication_for
 from .known_compounds import resolve_name, _INDEX, drug_info
+from .nlp import parse_scenario
+from .stoichiometry import stoichiometry
 
 
 # Suggested forward conditions per disconnection, used to turn a retro step
@@ -102,6 +104,47 @@ class ScenarioProcessor:
                 p.formula: DrugProfile(p).to_dict() for p in main.products
             }
         return result
+
+    # ----- natural-language scenario -----------------------------------
+    def react_nl(self, text: str, pharma_mode: bool = False) -> dict:
+        """Parse a free-text scenario, then run the reaction engine."""
+        parsed = parse_scenario(text)
+        if not parsed["reactants"]:
+            return {"ok": False, "errors": ["هیچ ماده‌ی شناخته‌شده‌ای در متن پیدا نشد"],
+                    "nl_parse": {"parsed_fa": parsed["parsed_fa"]}}
+        res = self.react(parsed["reactants"], parsed["_conditions_obj"], pharma_mode)
+        res["nl_parse"] = {"reactants": parsed["reactants"],
+                           "conditions": parsed["conditions"],
+                           "parsed_fa": parsed["parsed_fa"]}
+        return res
+
+    # ----- quantitative (stoichiometric) reaction ----------------------
+    def react_quantitative(self, reactant_inputs: list[str], conditions: Conditions,
+                           amounts: dict, actual_yield_g: float | None = None) -> dict:
+        """Run a reaction and compute limiting reagent + theoretical/percent yield.
+
+        `amounts` maps a reactant formula -> {"value": float, "unit": "g"|"mol"}.
+        """
+        mols, errors = _parse_reactants(reactant_inputs)
+        if not mols:
+            return {"ok": False, "errors": errors or ["ماده‌ی معتبری وارد نشد"]}
+        outcomes = self.engine.predict(mols, conditions, include_infeasible=True)
+        feasible = [o for o in outcomes if o.feasible]
+        main = feasible[0] if feasible else (outcomes[0] if outcomes else None)
+        if main is None:
+            return {"ok": True, "main_product": None,
+                    "summary_fa": "واکنشی برای محاسبه‌ی استوکیومتری یافت نشد"}
+        bal = main.balanced()
+        if not bal:
+            return {"ok": False, "errors": ["واکنش قابل موازنه نبود؛ محاسبه‌ی کمّی ممکن نیست"]}
+        amt_list = []
+        for m in main.reactants_used:
+            amt_list.append(amounts.get(m.formula, {"value": 1, "unit": "mol"}))
+        st = stoichiometry(main.reactants_used, main.products,
+                           bal["reactant_coeffs"], bal["product_coeffs"],
+                           amt_list, actual_yield_g)
+        return {"ok": True, "reaction": main.to_dict(include_svg=False),
+                "stoichiometry": st, "summary_fa": st["summary_fa"]}
 
     # ----- retrosynthesis ----------------------------------------------
     def reverse(self, target_input: str, max_depth: int = 3) -> dict:

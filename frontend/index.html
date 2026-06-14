@@ -166,7 +166,19 @@ function bondsTable(m){
 // ============ TAB: REACTION ============
 function tabReact(){
   $('#main').innerHTML=`<div class="card">
-    <h3>شبیه‌سازی واکنش / سناریو</h3>
+    <h3>سناریوی زبان طبیعی</h3>
+    <p class="hint">سناریو را به زبان روزمره بنویسید؛ سیستم خودش مواد و شرایط را استخراج و واکنش را پیش‌بینی می‌کند.</p>
+    <textarea id="nl_text" placeholder="مثلاً: استیک اسید و اتانول را با کاتالیزور سولفوریک اسید در دمای ۸۰ درجه حرارت بده"></textarea>
+    <div class="examples">نمونه:
+      <span onclick="$('#nl_text').value='استیک اسید و اتانول را با کاتالیزور سولفوریک اسید در دمای ۸۰ درجه حرارت بده';runNL()">استری‌شدن</span>
+      <span onclick="$('#nl_text').value='متان را در حضور اکسیژن در دمای ۶۰۰ درجه بسوزان';runNL()">احتراق</span>
+      <span onclick="$('#nl_text').value='بنزن و کلر را با کاتالیزور FeCl3 واکنش بده';runNL()">هالوژناسیون</span>
+    </div>
+    <button class="go" onclick="runNL()">تفسیر و شبیه‌سازی متن 🗣️</button>
+    <div id="nl_out"></div>
+  </div>
+  <div class="card">
+    <h3>ورودی ساختاریافته</h3>
     <label>مواد اولیه (هر کدام در یک خط یا با کاما — نام فارسی، انگلیسی یا SMILES)</label>
     <textarea id="rx_reactants" placeholder="acetic acid&#10;ethanol"></textarea>
     <div class="examples">نمونه:
@@ -182,6 +194,23 @@ function tabReact(){
   fillTechniques('rx');
 }
 function setRx(r,cat,t){ $('#rx_reactants').value=r; $('#rx_cat').value=cat; $('#rx_temp').value=t; }
+async function runNL(){
+  const out=$('#nl_out'); out.innerHTML='<p class="loading">در حال تفسیر متن…</p>';
+  try{
+    const res=await api('/api/scenario_nl',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:$('#nl_text').value})});
+    let html=`<div class="summary">${res.nl_parse?res.nl_parse.parsed_fa:''}</div>`;
+    if(!res.ok){ out.innerHTML=html+`<p class="err">${(res.errors||[]).join(' / ')}</p>`; return; }
+    html+=`<div class="summary">${res.summary_fa}</div>`;
+    if(res.main_product){
+      const mp=res.main_product;
+      if(mp.balanced_equation) html+=`<div class="kv">معادله: <b>${mp.balanced_equation}</b></div>`;
+      if(mp.thermodynamics||mp.kinetics) html+=thermoKinBlock(mp.thermodynamics,mp.kinetics);
+      html+=mp.products.map(p=>molCard(p)).join('');
+    }
+    out.innerHTML=html;
+  }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
+}
 async function runReact(){
   const out=$('#rx_out'); out.innerHTML='<p class="loading">در حال پردازش…</p>';
   const reactants=$('#rx_reactants').value.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
@@ -367,6 +396,18 @@ async function runMol(){
     html+=bondsTable(m);
     if(m.pharma){ html+=`<h4>تحلیل دارویی</h4>`+pharmaBlock(m.formula,m.pharma); }
     out.innerHTML=html;
+    // ADMET (deep pharmacology) — fetched separately
+    try{
+      const a=await api('/api/admet/'+encodeURIComponent($('#mx_q').value));
+      let ah=`<h4>ADMET (داروشناسی عمیق)</h4><div class="thermo">
+        <span class="pill">جذب: ${a.absorption_fa}</span>
+        <span class="pill">توزیع: ${a.distribution_fa}</span>
+        <span class="pill">متابولیسم: ${a.metabolism_fa}</span>
+        <span class="pill">دفع: ${a.excretion_fa}</span>
+        <span class="pill">سمیت: ${a.toxicity_fa}</span></div>
+        <div class="hint">${a.disclaimer_fa}</div>`;
+      out.innerHTML+=ah;
+    }catch(e){}
   }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
 }
 
@@ -463,7 +504,12 @@ const CAT_FA={analgesic:'مسکن/ضدالتهاب',antibiotic:'آنتی‌بی�
   respiratory:'تنفسی',git:'گوارش',vitamin:'ویتامین',antihistamine:'آنتی‌هیستامین',
   antimalarial:'ضدمالاریا'};
 async function tabDrugs(){
-  $('#main').innerHTML=`<div class="card"><h3>داروخانه — پایگاه داروها</h3>
+  $('#main').innerHTML=`
+  <div class="card"><h3>بررسی تداخل دارویی</h3>
+    <div class="row"><div><label>داروی اول</label><input id="ix_a" placeholder="aspirin"></div>
+      <div><label>داروی دوم</label><input id="ix_b" placeholder="warfarin"></div></div>
+    <button class="go" onclick="runIx()">بررسی تداخل</button><div id="ix_out"></div></div>
+  <div class="card"><h3>داروخانه — پایگاه داروها</h3>
     <input id="dg_search" placeholder="جستجو در داروها…" oninput="renderDrugs()">
     <div id="dg_list" class="loading" style="margin-top:12px">در حال بارگذاری…</div></div>`;
   if(!DRUGS_CACHE){ DRUGS_CACHE=(await api('/api/drugs')).drugs; }
@@ -489,13 +535,78 @@ function renderDrugs(){
   }
   $('#dg_list').innerHTML=html||'<p class="hint">داروی مطابقی یافت نشد.</p>';
 }
+async function runIx(){const o=$('#ix_out');o.innerHTML='…';try{const r=await api('/api/interaction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({drug_a:$('#ix_a').value,drug_b:$('#ix_b').value})});o.innerHTML=`<div class="summary"><span class="tag ${r.has_interaction?'bad':'ok'}">${r.has_interaction?'⚠️ تداخل':'بدون تداخل ثبت‌شده'}</span> ${r.drug_a} + ${r.drug_b}: ${r.interaction_fa}</div>`;}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
 function goAnalyze(n){ go('molecule'); setTimeout(()=>{$('#mx_q').value=n;runMol();},50); }
 function goSynth(n){ go('synth'); setTimeout(()=>{$('#sy_target').value=n;runSynth();},50); }
+
+// ============ TAB: LAB TOOLS ============
+function tabLab(){
+  $('#main').innerHTML=`
+  <div class="card"><h3>محاسبه‌ی pH محلول</h3>
+    <div class="row"><div><label>ماده (اسید/باز)</label><input id="ph_c" placeholder="acetic acid"></div>
+      <div><label>غلظت (مولار)</label><input id="ph_conc" type="number" value="0.1"></div></div>
+    <button class="go" onclick="runPH()">محاسبه pH</button><div id="ph_out"></div></div>
+  <div class="card"><h3>انحلال‌پذیری</h3>
+    <input id="sol_q" placeholder="glucose یا benzene">
+    <button class="go" onclick="runSol()">بررسی</button><div id="sol_out"></div></div>
+  <div class="card"><h3>تقطیر و جداسازی مخلوط</h3>
+    <label>اجزای مخلوط (هر کدام یک خط)</label>
+    <textarea id="dist_c" placeholder="ethanol&#10;water&#10;acetone"></textarea>
+    <button class="go" onclick="runDist()">شبیه‌سازی تقطیر</button><div id="dist_out"></div></div>
+  <div class="card"><h3>حالات اکسایش اتم‌ها</h3>
+    <input id="ox_q" placeholder="O=C=O یا glucose">
+    <button class="go" onclick="runOx()">محاسبه</button><div id="ox_out"></div></div>
+  <div class="card"><h3>الکتروشیمی — سلول گالوانی</h3>
+    <div class="row"><div><label>کاتد (کاهش)</label><select id="cell_cat"></select></div>
+      <div><label>آند (اکسایش)</label><select id="cell_an"></select></div></div>
+    <button class="go" onclick="runCell()">محاسبه EMF</button><div id="cell_out"></div></div>
+  <div class="card"><h3>برق‌کافت (الکترولیز)</h3>
+    <input id="el_q" placeholder="NaCl، CuSO4، H2O، KI…">
+    <button class="go" onclick="runEl()">پیش‌بینی محصولات</button><div id="el_out"></div></div>`;
+  api('/api/half_reactions').then(d=>{
+    const opts=d.half_reactions.map(h=>`<option value="${h.id}">${h.id} (E°=${h.e}V)</option>`).join('');
+    $('#cell_cat').innerHTML=opts; $('#cell_an').innerHTML=opts;
+    $('#cell_cat').value='Cu2+/Cu'; $('#cell_an').value='Zn2+/Zn';
+  });
+}
+async function runPH(){const o=$('#ph_out');o.innerHTML='…';try{const r=await api('/api/ph',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({compound:$('#ph_c').value,concentration_m:parseFloat($('#ph_conc').value)})});o.innerHTML=r.ok?`<div class="summary">${r.summary_fa}</div><div class="bar"><span style="width:${r.ph/14*100}%"></span></div>`:`<p class="err">${r.error_fa}</p>`;}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+async function runSol(){const o=$('#sol_out');o.innerHTML='…';try{const r=await api('/api/solubility/'+encodeURIComponent($('#sol_q').value));o.innerHTML=`<div class="summary">${r.verdict_fa}</div><div class="kv">LogP=${r.logp} · TPSA=${r.tpsa} · ماهیت: ${r.like_dissolves_like_fa}</div>`;}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+async function runDist(){const o=$('#dist_out');o.innerHTML='…';try{const comps=$('#dist_c').value.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);const r=await api('/api/distill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({components:comps})});if(!r.ok){o.innerHTML=`<p class="err">${r.error_fa}</p>`;return;}let h=`<div class="summary">${r.summary_fa}</div><table><tr><th>جزء</th><th>نقطه جوش °C</th><th>تخمینی؟</th></tr>`;r.fractions.forEach(f=>{h+=`<tr><td>${f.formula}</td><td>${f.bp_c}</td><td>${f.estimated?'بله':'خیر'}</td></tr>`;});o.innerHTML=h+'</table>'+r.notes_fa.map(n=>`<div class="hint">${n}</div>`).join('');}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+async function runOx(){const o=$('#ox_out');o.innerHTML='…';try{const r=await api('/api/oxidation/'+encodeURIComponent($('#ox_q').value));let h='<div class="thermo">';for(const[el,st] of Object.entries(r.by_element)){h+=`<span class="pill">${el}: ${st.join(', ')}</span>`;}o.innerHTML=h+'</div>';}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+async function runCell(){const o=$('#cell_out');o.innerHTML='…';try{const r=await api('/api/cell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cathode:$('#cell_cat').value,anode:$('#cell_an').value})});o.innerHTML=r.ok?`<div class="summary">${r.summary_fa}</div>`:`<p class="err">${r.error_fa}</p>`;}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+async function runEl(){const o=$('#el_out');o.innerHTML='…';try{const r=await api('/api/electrolysis/'+encodeURIComponent($('#el_q').value));o.innerHTML=r.ok?`<div class="summary">${r.summary_fa}</div>`:`<p class="err">${r.error_fa} (موجود: ${(r.available||[]).join('، ')})</p>`;}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+
+// ============ TAB: SPECTRA ============
+function tabSpectra(){
+  $('#main').innerHTML=`<div class="card"><h3>طیف‌سنجی پیش‌بینی‌شده (IR / ¹H NMR / MS)</h3>
+    <input id="sp_q" placeholder="aspirin یا CC(=O)Oc1ccccc1C(=O)O">
+    <div class="examples">نمونه:
+      <span onclick="$('#sp_q').value='aspirin';runSpectra()">آسپرین</span>
+      <span onclick="$('#sp_q').value='ethanol';runSpectra()">اتانول</span>
+      <span onclick="$('#sp_q').value='acetone';runSpectra()">استون</span></div>
+    <button class="go" onclick="runSpectra()">پیش‌بینی طیف 📈</button><div id="sp_out"></div></div>`;
+}
+async function runSpectra(){
+  const o=$('#sp_out');o.innerHTML='<p class="loading">…</p>';
+  try{
+    const d=await api('/api/spectra/'+encodeURIComponent($('#sp_q').value));
+    let h=`<h4>طیف مادون‌قرمز (IR)</h4><table><tr><th>عدد موجی (cm⁻¹)</th><th>انتساب</th></tr>`;
+    d.ir.bands.forEach(b=>{h+=`<tr><td>${b.wavenumber_cm}</td><td>${b.assignment_fa}</td></tr>`;});
+    h+='</table>';
+    h+=`<h4>¹H NMR — ${d.nmr_h.num_signals} سیگنال</h4><table><tr><th>شیفت (ppm)</th><th>انتگرال (H)</th><th>انتساب</th></tr>`;
+    d.nmr_h.signals.forEach(s=>{h+=`<tr><td>${s.shift_ppm}</td><td>${s.integration_h}</td><td>${s.assignment_fa}</td></tr>`;});
+    h+='</table>';
+    h+=`<h4>طیف جرمی (MS)</h4><div class="summary">${d.ms.summary_fa}</div><table><tr><th>قله</th><th>m/z</th><th>توضیح</th></tr>`;
+    d.ms.peaks.forEach(p=>{h+=`<tr><td>${p.label}</td><td>${p.mz}</td><td>${p.note_fa}</td></tr>`;});
+    o.innerHTML=h+'</table>';
+  }catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}
+}
 
 // ---------- tab wiring ----------
 const TABS=[['react','واکنش / سناریو',tabReact],['reverse','مهندسی معکوس',tabReverse],
   ['synth','سنتز دارو',tabSynth],['hypo','فرضیه‌سازی',tabHypo],
-  ['molecule','کاوشگر مولکول',tabMolecule],['drugs','داروخانه',tabDrugs],
+  ['molecule','کاوشگر مولکول',tabMolecule],['lab','آزمایشگاه',tabLab],
+  ['spectra','طیف‌سنجی',tabSpectra],['drugs','داروخانه',tabDrugs],
   ['periodic','جدول تناوبی',tabPeriodic]];
 function renderTabs(active){
   $('#tabs').innerHTML=TABS.map(([id,label])=>`<div class="tab ${id===active?'active':''}" onclick="go('${id}')">${label}</div>`).join('');

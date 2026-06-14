@@ -68,6 +68,17 @@ def _needs_light(c: Conditions) -> tuple[bool, str]:
     return False, "این واکنش رادیکالی به نور (UV) نیاز دارد"
 
 
+def _needs_lewis_acid(c: Conditions) -> tuple[bool, str]:
+    cat = (c.catalyst or "").lower()
+    if any(k in cat for k in ["fecl3", "alcl3", "febr3", "لوویس", "آهن", "آلومینیوم"]):
+        return True, "کاتالیزور اسید لوویس فراهم است"
+    return False, "این واکنش به کاتالیزور اسید لوویس (FeCl3/AlCl3) نیاز دارد"
+
+
+def _needs_acid_and_heat(c: Conditions) -> tuple[bool, str]:
+    return _needs_acid_catalyst(c)
+
+
 # NOTE: SMARTS are validated at import-time by reactions.py.
 REACTION_RULES: list[ReactionRule] = [
     ReactionRule(
@@ -144,5 +155,72 @@ REACTION_RULES: list[ReactionRule] = [
         category="organic",
         description_fa="آلکان + Cl2 (در حضور نور) ⟶ آلکیل‌هالید + HCl",
         feasible=_needs_light,
+    ),
+    ReactionRule(
+        rid="hydrohalogenation",
+        name="Hydrohalogenation (Markovnikov)",
+        name_fa="افزایش هیدروهالید به آلکن",
+        smarts="[C:1]=[C:2].[Cl;H1:3]>>[C:1][C:2][Cl:3]",
+        category="organic",
+        description_fa="آلکن + HCl ⟶ آلکیل‌هالید (افزایش مارکوونیکوف)",
+        feasible=_always,
+    ),
+    ReactionRule(
+        rid="dehydration",
+        name="Acid-catalysed dehydration",
+        name_fa="آب‌زدایی الکل (تشکیل آلکن)",
+        smarts="[CX4;H1,H2:1][CX4:2][OX2H]>>[CX3:1]=[CX3:2].[OH2]",
+        category="organic",
+        description_fa="الکل ⟶ آلکن + آب (کاتالیزور اسیدی و گرما)",
+        feasible=_needs_acid_catalyst,
+        needs_catalyst="H2SO4",
+    ),
+    ReactionRule(
+        rid="carbonyl_reduction",
+        name="Carbonyl reduction",
+        name_fa="احیای کربونیل به الکل",
+        smarts="[CX3:1]=[OX1:2].[H][H]>>[CX4:1][OX2H:2]",
+        category="organic",
+        description_fa="آلدهید/کتون + H2 ⟶ الکل (کاتالیزور فلزی یا NaBH4)",
+        feasible=_needs_metal_catalyst,
+        needs_catalyst="Ni/NaBH4",
+    ),
+    ReactionRule(
+        rid="aromatic_nitration",
+        name="Aromatic nitration",
+        name_fa="نیترودارشدن حلقه‌ی آروماتیک",
+        smarts="[cH:1].O[N+](=O)[O-]>>[c:1][N+](=O)[O-].[OH2]",
+        category="organic",
+        description_fa="بنزن + HNO3 (با H2SO4) ⟶ نیتروبنزن + آب",
+        feasible=_needs_acid_catalyst,
+        needs_catalyst="H2SO4",
+    ),
+    ReactionRule(
+        rid="aromatic_halogenation",
+        name="Electrophilic aromatic halogenation",
+        name_fa="هالوژن‌دارشدن آروماتیک (الکتروفیلی)",
+        smarts="[cH:1].[Cl][Cl]>>[c:1][Cl].[Cl][H]",
+        category="organic",
+        description_fa="بنزن + Cl2 (با FeCl3) ⟶ کلروبنزن + HCl",
+        feasible=_needs_lewis_acid,
+        needs_catalyst="FeCl3",
+    ),
+    ReactionRule(
+        rid="ester_hydrolysis_acid",
+        name="Acidic ester hydrolysis",
+        name_fa="هیدرولیز اسیدی استر",
+        smarts="[C:1](=[O:2])[O:3][#6:4].[OH2]>>[C:1](=[O:2])[O:3][H].[#6:4][OX2H]",
+        category="organic",
+        description_fa="استر + آب (محیط اسیدی) ⟶ کربوکسیلیک‌اسید + الکل",
+        feasible=_needs_acid_catalyst,
+    ),
+    ReactionRule(
+        rid="decarboxylation",
+        name="Decarboxylation",
+        name_fa="کربوکسیل‌زدایی",
+        smarts="[#6:1][CX3](=O)[OX2H]>>[#6:1][H].O=C=O",
+        category="organic",
+        description_fa="کربوکسیلیک‌اسید ⟶ هیدروکربن + CO2 (با گرما)",
+        feasible=_needs_heat,
     ),
 ]

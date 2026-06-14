@@ -193,6 +193,78 @@ def test_kinetics_infeasible_zero_yield():
     assert est.kinetics()["estimated_yield_pct"] == 0
 
 
+def test_stoichiometry_limiting_reagent():
+    from chemlab.stoichiometry import stoichiometry
+    res = stoichiometry(
+        [Molecule.parse("methane"), Molecule.from_smiles("O=O")],
+        [Molecule.from_smiles("O=C=O"), Molecule.from_smiles("O")],
+        [1, 2], [1, 2],
+        [{"value": 16, "unit": "g"}, {"value": 64, "unit": "g"}])
+    assert res["limiting_reagent"] == "CH4"
+    # 1 mol CH4 -> 1 mol CO2 ≈ 44 g
+    assert 43 < res["products"][0]["theoretical_g"] < 45
+
+
+def test_solution_ph():
+    from chemlab.solution import ph_of_solution
+    assert abs(ph_of_solution(Molecule.parse("hydrochloric acid"), 0.1)["ph"] - 1.0) < 0.1
+    assert abs(ph_of_solution(Molecule.parse("acetic acid"), 0.1)["ph"] - 2.87) < 0.2
+    assert ph_of_solution(Molecule.parse("sodium hydroxide"), 0.01)["ph"] > 11
+
+
+def test_distillation_order():
+    from chemlab.separation import distill
+    res = distill([Molecule.parse("water"), Molecule.parse("ethanol"),
+                   Molecule.parse("acetone")])
+    order = [f["formula"] for f in res["fractions"]]
+    assert order[0] == "C3H6O" and order[-1] == "H2O"  # acetone first, water last
+
+
+def test_oxidation_states():
+    from chemlab.redox import oxidation_states, cell_potential, electrolysis
+    co2 = oxidation_states(Molecule.from_smiles("O=C=O"))["by_element"]
+    assert co2["C"] == [4] and co2["O"] == [-2]
+    cell = cell_potential("Cu2+/Cu", "Zn2+/Zn")
+    assert abs(cell["emf"] - 1.10) < 0.01 and cell["spontaneous"]
+    assert electrolysis("NaCl")["ok"]
+
+
+def test_admet_and_interaction():
+    from chemlab.admet import admet, interaction
+    a = admet(Molecule.parse("caffeine"))
+    assert "absorption_fa" in a and "toxicity_fa" in a
+    ix = interaction("aspirin", "warfarin")
+    assert ix["has_interaction"]
+
+
+def test_spectra_prediction():
+    from chemlab.spectra import full_spectra
+    s = full_spectra(Molecule.parse("paracetamol"))
+    assert s["nmr_h"]["num_signals"] >= 4
+    assert any("آمید" in b["assignment_fa"] for b in s["ir"]["bands"])
+    assert abs(s["ms"]["molecular_ion_mz"] - 151.063) < 0.01
+
+
+def test_nlp_parsing():
+    from chemlab.nlp import parse_scenario
+    p = parse_scenario("استیک اسید و اتانول با کاتالیزور سولفوریک اسید در ۸۰ درجه")
+    assert "اتانول" in p["reactants"]
+    assert p["_conditions_obj"].temperature_c == 80
+    assert p["_conditions_obj"].catalyst == "H2SO4"
+
+
+def test_react_nl_end_to_end():
+    sp = ScenarioProcessor()
+    res = sp.react_nl("متان را در حضور اکسیژن در دمای ۶۰۰ درجه بسوزان")
+    assert res["ok"] and res["main_product"]
+    assert "→" in res["main_product"]["balanced_equation"]
+
+
+def test_expanded_reaction_count():
+    from chemlab.reaction_data import REACTION_RULES
+    assert len(REACTION_RULES) >= 15
+
+
 def test_drug_profile():
     asp = Molecule.parse("آسپرین")
     prof = DrugProfile(asp).to_dict()
