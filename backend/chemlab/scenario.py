@@ -11,13 +11,35 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .conditions import Conditions
+from rdkit import Chem
+
+from .conditions import Conditions, Technique
 from .molecule import Molecule, MoleculeError
 from .reactions import ReactionEngine
 from .retrosynthesis import Retrosynthesizer
 from .hypothesis import HypothesisEngine
 from .pharma import DrugProfile, indication_for
-from .known_compounds import resolve_name, _INDEX
+from .known_compounds import resolve_name, _INDEX, drug_info
+
+
+# Suggested forward conditions per disconnection, used to turn a retro step
+# into a concrete (proposed) synthesis recipe.
+_SYNTH_CONDITIONS: dict[str, tuple[Conditions, str]] = {
+    "ester_cut": (Conditions(temperature_c=80, catalyst="H2SO4"),
+                  "استری‌شدن فیشر: کاتالیزور اسیدی (H2SO4) و گرمادهی (~۸۰°C)"),
+    "amide_cut": (Conditions(temperature_c=160, techniques=[Technique.HEATING]),
+                  "تراکم آمیدی: گرمادهی قوی (~۱۶۰°C) برای حذف آب"),
+    "ether_cut": (Conditions(temperature_c=120, catalyst="NaOH"),
+                  "سنتز ویلیامسون اتر: باز (NaOH) و گرما"),
+    "reductive_amination": (Conditions(temperature_c=25, catalyst="NaBH4"),
+                            "احیای آمیناسیون: تشکیل ایمین و سپس احیا با NaBH4/H2-Ni"),
+    "friedel_crafts_acyl": (Conditions(temperature_c=40, catalyst="AlCl3"),
+                            "آسیله‌شدن فریدل-کرافتس: کاتالیزور اسید لوویس (AlCl3)"),
+    "nitro_reduction": (Conditions(temperature_c=50, catalyst="H2/Pd"),
+                        "احیای گروه نیترو به آمین: H2 با کاتالیزور Pd یا Sn/HCl"),
+    "alcohol_oxidation": (Conditions(temperature_c=60, catalyst="KMnO4"),
+                          "اکسایش به ترکیب کربونیل با اکسنده (KMnO4/PCC)"),
+}
 
 
 def _parse_reactants(items: list[str]) -> tuple[list[Molecule], list[str]]:
@@ -107,6 +129,67 @@ class ScenarioProcessor:
             "base_components": blocks,
             "pharma": pharma,
             "summary_fa": summary,
+        }
+
+    # ----- forward synthesis of a target drug --------------------------
+    def synthesize(self, target_input: str) -> dict:
+        """Plan a synthesis: target -> (retro) precursors -> (forward) confirm.
+
+        For each disconnection of the target we propose precursors + suitable
+        conditions, then run the forward engine to check whether the target is
+        actually regenerated, yielding a verified recipe where possible.
+        """
+        try:
+            target = Molecule.parse(target_input)
+        except MoleculeError as e:
+            return {"ok": False, "errors": [str(e)]}
+        target_canon = Chem.CanonSmiles(target.smiles)
+        info = drug_info(target_input) or drug_info(_reverse_lookup(target.smiles) or "")
+
+        steps = self.retro.analyze(target)
+        routes = []
+        for s in steps:
+            cond, note = _SYNTH_CONDITIONS.get(
+                s.rule_id, (Conditions(), "شرایط استاندارد"))
+            confirmed = False
+            forward_product = None
+            outcomes = self.engine.predict(s.precursors, cond, include_infeasible=True)
+            for oc in outcomes:
+                for p in oc.products:
+                    try:
+                        if Chem.CanonSmiles(p.smiles) == target_canon:
+                            confirmed = True
+                            forward_product = oc.to_dict(include_svg=False)
+                            break
+                    except Exception:
+                        continue
+                if confirmed:
+                    break
+            routes.append({
+                "disconnection": s.rule_id,
+                "explanation_fa": s.explanation_fa,
+                "precursors": [p.to_dict() for p in s.precursors],
+                "precursor_summary": " + ".join(p.formula for p in s.precursors),
+                "conditions": cond.to_dict(),
+                "conditions_note_fa": note,
+                "forward_confirmed": confirmed,
+                "forward_product": forward_product,
+            })
+        # confirmed routes first
+        routes.sort(key=lambda r: (not r["forward_confirmed"]))
+        confirmed_n = sum(1 for r in routes if r["forward_confirmed"])
+        return {
+            "ok": True,
+            "target": target.to_dict(),
+            "drug_info": info,
+            "pharma": DrugProfile(target).to_dict(),
+            "routes": routes,
+            "summary_fa": (
+                f"برای ساخت {target.formula}، {len(routes)} مسیر پیشنهاد شد؛ "
+                f"{confirmed_n} مسیر با شبیه‌سازی رو‌به‌جلو تأیید شد (دارو بازتولید شد)."
+                if routes else
+                f"{target.formula} با قوانین فعلی به پیش‌سازهای ساده‌تر تجزیه نشد."
+            ),
         }
 
     # ----- hypothesis / discovery --------------------------------------

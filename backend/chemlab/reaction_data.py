@@ -72,11 +72,11 @@ def _needs_light(c: Conditions) -> tuple[bool, str]:
 REACTION_RULES: list[ReactionRule] = [
     ReactionRule(
         rid="esterification",
-        name="Fischer esterification",
-        name_fa="استری‌شدن فیشر",
-        smarts="[C:1](=[O:2])[OX2H].[OX2H:4][C:5]>>[C:1](=[O:2])[O:4][C:5].[OH2]",
+        name="Fischer esterification / O-acylation",
+        name_fa="استری‌شدن (الکل و فنل)",
+        smarts="[C:1](=[O:2])[OX2H].[OX2H:4][#6:5]>>[C:1](=[O:2])[O:4][#6:5].[OH2]",
         category="organic",
-        description_fa="کربوکسیلیک اسید + الکل ⟶ استر + آب (با کاتالیزور اسیدی و گرما)",
+        description_fa="کربوکسیلیک اسید + الکل/فنل ⟶ استر + آب (با کاتالیزور اسیدی و گرما)",
         feasible=_needs_acid_catalyst,
         needs_catalyst="H2SO4",
     ),

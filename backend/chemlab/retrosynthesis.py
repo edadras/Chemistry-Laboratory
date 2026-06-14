@@ -29,6 +29,30 @@ def _reverse_smarts(smarts: str) -> str:
     return f"{right}>>{left}"
 
 
+def _clean_product(mol: Chem.Mol) -> Chem.Mol | None:
+    """Sanitize a reaction product, repairing H bookkeeping if needed.
+
+    Oxidation-state-changing transforms (alcohol⟶carbonyl, amine C–N cut) can
+    leave a carbon with a stale explicit-H count and thus an over-valence. If
+    the first sanitize fails, reset implicit-H handling and retry.
+    """
+    m = Chem.Mol(mol)
+    try:
+        Chem.SanitizeMol(m)
+        return m
+    except Exception:
+        pass
+    m = Chem.Mol(mol)
+    for atom in m.GetAtoms():
+        atom.SetNumExplicitHs(0)
+        atom.SetNoImplicit(False)
+    try:
+        Chem.SanitizeMol(m)
+        return m
+    except Exception:
+        return None
+
+
 # Reactions that form a new skeleton (worth reversing). Pure additions of small
 # molecules (hydration etc.) are reversible too but produce trivial precursors.
 _RETRO_RULES = {
@@ -39,14 +63,38 @@ _RETRO_RULES = {
 # Dedicated, more permissive retro disconnections (independent of forward rules).
 # Using [#6] matches both aromatic and aliphatic carbons, so aryl esters
 # (e.g. aspirin's acetate) are disconnected correctly.
+#
+# Two kinds of transforms live here:
+#   * bond cleavages (2 precursors) — break the skeleton into building blocks
+#   * functional-group interconversions / FGI (1 precursor) — change a group
+#     without breaking the skeleton (e.g. nitro -> amine, alcohol -> carbonyl)
 _GENERIC_DISCONNECTIONS = [
+    # --- skeleton cleavages -------------------------------------------------
     ("ester_cut", "برش پیوند استری: استر ⟶ کربوکسیلیک‌اسید + الکل/فنل",
      "[C:1](=[O:2])[O:3][#6:4]>>[C:1](=[O:2])[OX2H:3].[#6:4][OX2H]"),
     ("amide_cut", "برش پیوند آمیدی: آمید ⟶ کربوکسیلیک‌اسید + آمین",
      "[C:1](=[O:2])[NX3:3]>>[C:1](=[O:2])[OX2H].[NX3:3][H]"),
     ("ether_cut", "برش پیوند اتری: اتر ⟶ دو الکل/فنل",
      "[#6:1][OX2;!$(O[CX3]=[OX1]):2][#6:3]>>[#6:1][OX2:2][H].[#6:3][OX2H]"),
+    ("reductive_amination", "برش C–N آمین (احیای آمیناسیون): آمین ⟶ ترکیب کربونیل + آمین",
+     "[CX4;H1,H2;!$([CX4][OX2]);!$([CX4]([#7])[#7]):1][NX3;!$([NX3][CX3]=[OX1]);!+:2]"
+     ">>[CX3:1]=[O].[NX3:2][H]"),
+    ("friedel_crafts_acyl", "برش C–C (آسیله‌شدن فریدل-کرافتس): آریل‌کتون ⟶ آرن + آسیل‌کلرید",
+     "[c:1][CX3:2](=[OX1:3])[#6:4]>>[c:1][H].[Cl][C:2](=[O:3])[#6:4]"),
+    ("aldol_cc", "برش C–C (آلدُل): بتا-هیدروکسی‌کربونیل ⟶ دو ترکیب کربونیل",
+     "[CX4:1][CX4:2]([OX2H])[CX4:3][CX3:4]=[OX1:5]"
+     ">>[CX3:1]=[O].[CX4:3][CX3:4]=[O:5]"),
+    # --- functional-group interconversions (FGI) ---------------------------
+    ("nitro_reduction", "احیای نیترو (معکوس): آمین آروماتیک ⟸ نیتروآرن",
+     "[c:1][NX3;H1,H2;!$([NX3][CX3]=[OX1]):2]>>[c:1][N+:2](=O)[O-]"),
+    ("alcohol_oxidation", "اکسایش (معکوس): الکل ⟸ ترکیب کربونیل",
+     "[CX4;H1,H2;!$([CX4]([OX2,NX3])[OX2,NX3]);!$([CX4][OX2][CX3]=O):1][OX2H]"
+     ">>[CX3:1]=[O]"),
 ]
+
+# Transforms that merely break the molecule into smaller building blocks.
+_CLEAVAGE_RULES = {"ester_cut", "amide_cut", "ether_cut", "reductive_amination",
+                   "friedel_crafts_acyl", "aldol_cc"}
 
 
 @dataclass
@@ -94,12 +142,11 @@ class Retrosynthesizer:
                 mols = []
                 ok = True
                 for p in ps:
-                    try:
-                        Chem.SanitizeMol(p)
-                        mols.append(Molecule(p))
-                    except Exception:
+                    cleaned = _clean_product(p)
+                    if cleaned is None:
                         ok = False
                         break
+                    mols.append(Molecule(cleaned))
                 if not ok or not mols:
                     continue
                 # skip trivial water-only fragments
@@ -133,11 +180,15 @@ class Retrosynthesizer:
             return node
         visited = visited | {mol.smiles}
         steps = self.analyze(mol)
-        if not steps:
+        # Only follow true skeleton cleavages (>1 fragment); FGIs don't shrink
+        # the molecule and could otherwise loop. They still appear in analyze().
+        cleavages = [s for s in steps
+                     if s.rule_id in _CLEAVAGE_RULES and len(s.precursors) > 1]
+        if not cleavages:
             leaves.append(mol.smiles)
             return node
-        # follow the first disconnection
-        for p in steps[0].precursors:
+        chosen = cleavages[0]
+        for p in chosen.precursors:
             node["children"].append(self._recurse(p, depth - 1, leaves, visited))
-        node["rule"] = steps[0].rule_id
+        node["rule"] = chosen.rule_id
         return node

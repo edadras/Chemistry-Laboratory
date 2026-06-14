@@ -88,6 +88,41 @@ def test_hypothesis_discovers_aspirin():
     assert "C9H8O4" in products  # aspirin discovered
 
 
+def test_retro_reductive_amination():
+    retro = Retrosynthesizer()
+    phenylephrine = Molecule.from_smiles("CNC[C@H](O)c1cccc(O)c1")
+    steps = retro.analyze(phenylephrine)
+    rule_ids = {s.rule_id for s in steps}
+    assert "reductive_amination" in rule_ids
+    blocks = retro.base_building_blocks(phenylephrine)["base_components"]
+    assert len(blocks) >= 2  # broke into building blocks (not just itself)
+
+
+def test_synthesize_paracetamol_confirmed():
+    sp = ScenarioProcessor()
+    res = sp.synthesize("استامینوفن")
+    assert res["ok"]
+    assert any(r["forward_confirmed"] for r in res["routes"])
+    assert res["drug_info"]["category"] == "analgesic"
+
+
+def test_synthesize_aspirin_confirmed():
+    sp = ScenarioProcessor()
+    res = sp.synthesize("آسپرین")
+    assert any(r["disconnection"] == "ester_cut" and r["forward_confirmed"]
+               for r in res["routes"])
+
+
+def test_drug_database_metadata():
+    from chemlab.known_compounds import all_drugs, drug_info
+    drugs = all_drugs()
+    assert len(drugs) >= 25
+    cats = {d["category"] for d in drugs}
+    assert {"antibiotic", "antiviral", "analgesic"} <= cats
+    info = drug_info("ciprofloxacin")
+    assert info and info["category"] == "antibiotic"
+
+
 def test_drug_profile():
     asp = Molecule.parse("آسپرین")
     prof = DrugProfile(asp).to_dict()

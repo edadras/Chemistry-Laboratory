@@ -15,21 +15,7 @@ from rdkit import Chem
 from rdkit.Chem import QED, Descriptors, Crippen, Lipinski, rdMolDescriptors
 
 from .molecule import Molecule
-
-
-# Known drug -> (indication_fa, drug_class_fa)
-DRUG_INDICATIONS = {
-    "aspirin": ("مسکن، ضدالتهاب و رقیق‌کننده خون", "NSAID"),
-    "paracetamol": ("تب‌بر و مسکن", "ضددرد"),
-    "ibuprofen": ("ضدالتهاب غیراستروئیدی، مسکن", "NSAID"),
-    "amoxicillin": ("آنتی‌بیوتیک طیف‌وسیع (عفونت‌های باکتریایی)", "بتالاکتام"),
-    "penicillin g": ("آنتی‌بیوتیک (عفونت‌های گرم‌مثبت)", "بتالاکتام"),
-    "metformin": ("کنترل قند خون در دیابت نوع ۲", "ضددیابت"),
-    "diazepam": ("ضداضطراب و آرام‌بخش", "بنزودیازپین"),
-    "morphine": ("مسکن قوی (درد شدید)", "اوپیوئید"),
-    "caffeine": ("محرک سیستم عصبی مرکزی", "محرک"),
-    "ascorbic acid": ("ویتامین C، آنتی‌اکسیدان", "ویتامین"),
-}
+from .known_compounds import drug_info
 
 # (SMARTS, name_fa) toxicophore alerts — illustrative, not exhaustive.
 STRUCTURAL_ALERTS = [
@@ -112,7 +98,9 @@ class DrugProfile:
 
 
 def indication_for(name: str) -> dict | None:
-    info = DRUG_INDICATIONS.get(name.strip().lower())
+    info = drug_info(name)
     if not info:
         return None
-    return {"indication_fa": info[0], "drug_class_fa": info[1]}
+    return {"indication_fa": info.get("indication_fa"),
+            "drug_class_fa": info.get("drug_class_fa"),
+            "category": info.get("category")}

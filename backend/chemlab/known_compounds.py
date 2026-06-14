@@ -45,42 +45,111 @@ _COMPOUNDS: dict[str, dict] = {
     "sodium bicarbonate": {"smiles": "C(=O)(O)[O-].[Na+]", "fa": "جوش‌شیرین",
                            "syn": ["baking soda", "nahco3", "بی‌کربنات سدیم"]},
     "urea": {"smiles": "NC(=O)N", "fa": "اوره", "syn": []},
-
-    # --- drugs / pharma ---
-    "aspirin": {"smiles": "CC(=O)Oc1ccccc1C(=O)O", "fa": "آسپرین",
-                "syn": ["acetylsalicylic acid", "استیل سالیسیلیک اسید"]},
     "salicylic acid": {"smiles": "O=C(O)c1ccccc1O", "fa": "سالیسیلیک اسید", "syn": []},
-    "paracetamol": {"smiles": "CC(=O)Nc1ccc(O)cc1", "fa": "استامینوفن",
-                    "syn": ["acetaminophen", "tylenol", "استامینوفن"]},
-    "ibuprofen": {"smiles": "CC(C)Cc1ccc(C(C)C(=O)O)cc1", "fa": "ایبوپروفن", "syn": ["advil"]},
-    "caffeine": {"smiles": "Cn1cnc2c1c(=O)n(C)c(=O)n2C", "fa": "کافئین", "syn": []},
-    "penicillin g": {"smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)Cc3ccccc3)C(=O)N2[C@H]1C(=O)O",
-                     "fa": "پنی‌سیلین جی", "syn": ["benzylpenicillin", "penicillin", "پنی‌سیلین"]},
-    "amoxicillin": {"smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccc(O)cc3)C(=O)N2[C@H]1C(=O)O",
-                    "fa": "آموکسی‌سیلین", "syn": ["amoxil"]},
-    "ascorbic acid": {"smiles": "OC[C@H](O)[C@H]1OC(=O)C(O)=C1O", "fa": "ویتامین ث",
-                      "syn": ["vitamin c", "ویتامین سی", "vit c"]},
-    "morphine": {"smiles": "CN1CC[C@]23c4c5ccc(O)c4O[C@H]2[C@@H](O)C=C[C@H]3[C@H]1C5",
-                 "fa": "مورفین", "syn": []},
     "nicotine": {"smiles": "CN1CCC[C@H]1c1cccnc1", "fa": "نیکوتین", "syn": []},
     "dopamine": {"smiles": "NCCc1ccc(O)c(O)c1", "fa": "دوپامین", "syn": []},
-    "adrenaline": {"smiles": "CNC[C@H](O)c1ccc(O)c(O)c1", "fa": "آدرنالین", "syn": ["epinephrine"]},
-    "penicillin v": {"smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)COc3ccccc3)C(=O)N2[C@H]1C(=O)O",
-                     "fa": "پنی‌سیلین وی", "syn": ["phenoxymethylpenicillin"]},
-    "metformin": {"smiles": "CN(C)C(=N)N=C(N)N", "fa": "متفورمین", "syn": []},
-    "diazepam": {"smiles": "CN1C(=O)CN=C(c2ccccc2)c2cc(Cl)ccc21", "fa": "دیازپام", "syn": ["valium"]},
+    "para-aminophenol": {"smiles": "Nc1ccc(O)cc1", "fa": "پاراآمینوفنول", "syn": ["4-aminophenol"]},
 }
+
+# ---------------------------------------------------------------------------
+# Drug registry — each entry carries therapeutic metadata so the engine can
+# report indication (کاربرد درمانی) and class, and group drugs by category.
+# Keys: smiles, fa, syn, ind (کاربرد درمانی), cls (دسته دارویی), cat (گروه درمانی)
+# ---------------------------------------------------------------------------
+_DRUGS: dict[str, dict] = {
+    # ---- مسکن‌ها و ضدالتهاب‌ها (analgesics / NSAIDs) ----
+    "aspirin": {"smiles": "CC(=O)Oc1ccccc1C(=O)O", "fa": "آسپرین",
+                "syn": ["acetylsalicylic acid", "استیل سالیسیلیک اسید"],
+                "ind": "مسکن، تب‌بر، ضدالتهاب و رقیق‌کننده خون", "cls": "NSAID", "cat": "analgesic"},
+    "paracetamol": {"smiles": "CC(=O)Nc1ccc(O)cc1", "fa": "استامینوفن",
+                    "syn": ["acetaminophen", "tylenol"],
+                    "ind": "تب‌بر و مسکن", "cls": "ضددرد/تب‌بر", "cat": "analgesic"},
+    "ibuprofen": {"smiles": "CC(C)Cc1ccc(C(C)C(=O)O)cc1", "fa": "ایبوپروفن", "syn": ["advil"],
+                  "ind": "ضدالتهاب غیراستروئیدی و مسکن", "cls": "NSAID", "cat": "analgesic"},
+    "naproxen": {"smiles": "COc1ccc2cc([C@@H](C)C(=O)O)ccc2c1", "fa": "ناپروکسن", "syn": [],
+                 "ind": "ضدالتهاب و مسکن طولانی‌اثر", "cls": "NSAID", "cat": "analgesic"},
+    "diclofenac": {"smiles": "O=C(O)Cc1ccccc1Nc1c(Cl)cccc1Cl", "fa": "دیکلوفناک", "syn": [],
+                   "ind": "ضدالتهاب و مسکن (دردهای عضلانی-مفصلی)", "cls": "NSAID", "cat": "analgesic"},
+    "ketoprofen": {"smiles": "CC(C(=O)O)c1cccc(C(=O)c2ccccc2)c1", "fa": "کتوپروفن", "syn": [],
+                   "ind": "ضدالتهاب و مسکن", "cls": "NSAID", "cat": "analgesic"},
+    "morphine": {"smiles": "CN1CC[C@]23c4c5ccc(O)c4O[C@H]2[C@@H](O)C=C[C@H]3[C@H]1C5",
+                 "fa": "مورفین", "syn": [],
+                 "ind": "مسکن قوی برای درد شدید", "cls": "اوپیوئید", "cat": "analgesic"},
+    "tramadol": {"smiles": "CN(C)C[C@@H]1CCCC[C@]1(O)c1cccc(OC)c1", "fa": "ترامادول", "syn": [],
+                 "ind": "مسکن متوسط تا شدید", "cls": "اوپیوئید ضعیف", "cat": "analgesic"},
+
+    # ---- آنتی‌بیوتیک‌ها (antibiotics) ----
+    "penicillin g": {"smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)Cc3ccccc3)C(=O)N2[C@H]1C(=O)O",
+                     "fa": "پنی‌سیلین جی", "syn": ["benzylpenicillin", "penicillin", "پنی‌سیلین"],
+                     "ind": "عفونت‌های باکتریایی گرم‌مثبت", "cls": "بتالاکتام", "cat": "antibiotic"},
+    "amoxicillin": {"smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccc(O)cc3)C(=O)N2[C@H]1C(=O)O",
+                    "fa": "آموکسی‌سیلین", "syn": ["amoxil"],
+                    "ind": "آنتی‌بیوتیک طیف‌وسیع", "cls": "پنی‌سیلین (بتالاکتام)", "cat": "antibiotic"},
+    "ampicillin": {"smiles": "CC1(C)S[C@@H]2[C@H](NC(=O)[C@H](N)c3ccccc3)C(=O)N2[C@H]1C(=O)O",
+                   "fa": "آمپی‌سیلین", "syn": [],
+                   "ind": "آنتی‌بیوتیک طیف‌وسیع", "cls": "پنی‌سیلین (بتالاکتام)", "cat": "antibiotic"},
+    "ciprofloxacin": {"smiles": "OC(=O)c1cn(C2CC2)c2cc(N3CCNCC3)c(F)cc2c1=O",
+                      "fa": "سیپروفلوکساسین", "syn": ["cipro"],
+                      "ind": "عفونت‌های ادراری و تنفسی", "cls": "فلوروکینولون", "cat": "antibiotic"},
+    "trimethoprim": {"smiles": "COc1cc(Cc2cnc(N)nc2N)cc(OC)c1OC", "fa": "تری‌متوپریم", "syn": [],
+                     "ind": "عفونت ادراری (مهارکننده فولات)", "cls": "ضدفولات", "cat": "antibiotic"},
+    "sulfamethoxazole": {"smiles": "Cc1cc(NS(=O)(=O)c2ccc(N)cc2)no1", "fa": "سولفامتوکسازول",
+                         "syn": [], "ind": "آنتی‌بیوتیک سولفونامیدی", "cls": "سولفونامید",
+                         "cat": "antibiotic"},
+    "chloramphenicol": {"smiles": "OC[C@@H](NC(=O)C(Cl)Cl)[C@H](O)c1ccc([N+](=O)[O-])cc1",
+                        "fa": "کلرامفنیکل", "syn": [],
+                        "ind": "آنتی‌بیوتیک طیف‌وسیع", "cls": "آمفنیکل", "cat": "antibiotic"},
+    "metronidazole": {"smiles": "Cc1ncc([N+](=O)[O-])n1CCO", "fa": "مترونیدازول", "syn": [],
+                      "ind": "عفونت‌های بی‌هوازی و انگلی", "cls": "نیتروایمیدازول", "cat": "antibiotic"},
+
+    # ---- ضدویروس‌ها (antivirals) ----
+    "acyclovir": {"smiles": "Nc1nc2n(COCCO)cnc2c(=O)[nH]1", "fa": "آسیکلوویر", "syn": ["aciclovir"],
+                  "ind": "عفونت‌های تبخال (هرپس)", "cls": "آنالوگ نوکلئوزیدی", "cat": "antiviral"},
+    "zidovudine": {"smiles": "Cc1cn([C@H]2C[C@H](N=[N+]=[N-])[C@@H](CO)O2)c(=O)[nH]c1=O",
+                   "fa": "زیدوودین", "syn": ["azt"],
+                   "ind": "درمان HIV/ایدز", "cls": "مهارکننده ترانس‌کریپتاز معکوس", "cat": "antiviral"},
+    "oseltamivir": {"smiles": "CCOC(=O)C1=C[C@@H](OC(CC)CC)[C@H](NC(C)=O)[C@@H](N)C1",
+                    "fa": "اوسلتامیویر", "syn": ["tamiflu"],
+                    "ind": "آنفلوانزا (مهار نورامینیداز)", "cls": "مهارکننده نورامینیداز",
+                    "cat": "antiviral"},
+
+    # ---- سایر (other therapeutic) ----
+    "metformin": {"smiles": "CN(C)C(=N)N=C(N)N", "fa": "متفورمین", "syn": [],
+                  "ind": "کنترل قند خون در دیابت نوع ۲", "cls": "بیگوانید", "cat": "antidiabetic"},
+    "diazepam": {"smiles": "CN1C(=O)CN=C(c2ccccc2)c2cc(Cl)ccc21", "fa": "دیازپام", "syn": ["valium"],
+                 "ind": "ضداضطراب و آرام‌بخش", "cls": "بنزودیازپین", "cat": "cns"},
+    "caffeine": {"smiles": "Cn1cnc2c1c(=O)n(C)c(=O)n2C", "fa": "کافئین", "syn": [],
+                 "ind": "محرک سیستم عصبی مرکزی", "cls": "محرک گزانتین", "cat": "cns"},
+    "ascorbic acid": {"smiles": "OC[C@H](O)[C@H]1OC(=O)C(O)=C1O", "fa": "ویتامین ث",
+                      "syn": ["vitamin c", "ویتامین سی", "vit c"],
+                      "ind": "ویتامین C، آنتی‌اکسیدان", "cls": "ویتامین", "cat": "vitamin"},
+    "adrenaline": {"smiles": "CNC[C@H](O)c1ccc(O)c(O)c1", "fa": "آدرنالین", "syn": ["epinephrine"],
+                   "ind": "شوک آنافیلاکسی و ایست قلبی", "cls": "کاتکول‌آمین", "cat": "cardio"},
+    "phenylephrine": {"smiles": "CNC[C@H](O)c1cccc(O)c1", "fa": "فنیل‌افرین", "syn": [],
+                      "ind": "ضداحتقان بینی و افزاینده فشار خون", "cls": "آگونیست آلفا-آدرنرژیک",
+                      "cat": "decongestant"},
+    "pseudoephedrine": {"smiles": "CN[C@@H](C)[C@H](O)c1ccccc1", "fa": "سودوافدرین", "syn": [],
+                        "ind": "ضداحتقان بینی", "cls": "سمپاتومیمتیک", "cat": "decongestant"},
+    "salbutamol": {"smiles": "CC(C)(C)NCC(O)c1ccc(O)c(CO)c1", "fa": "سالبوتامول", "syn": ["albuterol"],
+                   "ind": "گشادکننده برونش (آسم)", "cls": "آگونیست بتا-۲", "cat": "respiratory"},
+    "omeprazole": {"smiles": "COc1ccc2[nH]c(S(=O)Cc3ncc(C)c(OC)c3C)nc2c1", "fa": "امپرازول", "syn": [],
+                   "ind": "زخم معده و رفلاکس (مهار پمپ پروتون)", "cls": "PPI", "cat": "git"},
+}
+
+# Catalogue used for name resolution (non-drug compounds only here).
+_NONDRUG = dict(_COMPOUNDS)
 
 
 def _build_index() -> dict[str, str]:
     idx: dict[str, str] = {}
-    for canonical, info in _COMPOUNDS.items():
-        smiles = info["smiles"]
-        idx[canonical.lower()] = smiles
-        if info.get("fa"):
-            idx[info["fa"].strip().lower()] = smiles
-        for syn in info.get("syn", []):
-            idx[syn.strip().lower()] = smiles
+    for source in (_COMPOUNDS, _DRUGS):
+        for canonical, info in source.items():
+            smiles = info["smiles"]
+            idx[canonical.lower()] = smiles
+            if info.get("fa"):
+                idx[info["fa"].strip().lower()] = smiles
+            for syn in info.get("syn", []):
+                idx[syn.strip().lower()] = smiles
     return idx
 
 
@@ -88,13 +157,36 @@ _INDEX = _build_index()
 
 
 def resolve_name(text: str) -> str | None:
-    """Return SMILES for a known compound name, else None."""
+    """Return SMILES for a known compound/drug name, else None."""
     return _INDEX.get(text.strip().lower())
 
 
 def all_compounds() -> list[dict]:
-    """List the catalogue (for the UI)."""
+    """List the full catalogue (compounds + drugs) for the UI."""
+    out = [{"name": n, "name_fa": i.get("fa"), "smiles": i["smiles"], "is_drug": False}
+           for n, i in _COMPOUNDS.items()]
+    out += [{"name": n, "name_fa": i.get("fa"), "smiles": i["smiles"], "is_drug": True,
+             "category": i.get("cat")} for n, i in _DRUGS.items()]
+    return out
+
+
+def drug_info(name: str) -> dict | None:
+    """Therapeutic metadata for a drug by any of its names."""
+    key = name.strip().lower()
+    for canonical, info in _DRUGS.items():
+        names = {canonical.lower(), (info.get("fa") or "").lower()}
+        names |= {s.lower() for s in info.get("syn", [])}
+        if key in names:
+            return {"name": canonical, "name_fa": info.get("fa"),
+                    "indication_fa": info.get("ind"), "drug_class_fa": info.get("cls"),
+                    "category": info.get("cat"), "smiles": info["smiles"]}
+    return None
+
+
+def all_drugs() -> list[dict]:
+    """All drugs grouped-friendly list with therapeutic metadata."""
     return [
-        {"name": name, "name_fa": info.get("fa"), "smiles": info["smiles"]}
-        for name, info in _COMPOUNDS.items()
+        {"name": n, "name_fa": i.get("fa"), "smiles": i["smiles"],
+         "indication_fa": i.get("ind"), "drug_class_fa": i.get("cls"), "category": i.get("cat")}
+        for n, i in _DRUGS.items()
     ]

@@ -22,6 +22,7 @@ from chemlab import (
 )
 from chemlab.conditions import Conditions, TECHNIQUE_FA, Technique
 from chemlab.scenario import _reverse_lookup
+from chemlab.known_compounds import all_drugs
 
 app = FastAPI(title="آزمایشگاه شیمی هوشمند", version="0.1.0")
 app.add_middleware(
@@ -60,6 +61,10 @@ class ReverseRequest(BaseModel):
     max_depth: int = 3
 
 
+class SynthesizeRequest(BaseModel):
+    target: str
+
+
 class HypothesisRequest(BaseModel):
     reactants: list[str]
     conditions: ConditionsIn = Field(default_factory=ConditionsIn)
@@ -81,6 +86,11 @@ def techniques() -> dict:
 @app.get("/api/compounds")
 def compounds() -> dict:
     return {"compounds": all_compounds()}
+
+
+@app.get("/api/drugs")
+def drugs() -> dict:
+    return {"drugs": all_drugs()}
 
 
 @app.get("/api/elements")
@@ -135,6 +145,11 @@ def react(req: ReactRequest) -> dict:
 @app.post("/api/reverse")
 def reverse(req: ReverseRequest) -> dict:
     return processor.reverse(req.target, req.max_depth)
+
+
+@app.post("/api/synthesize")
+def synthesize(req: SynthesizeRequest) -> dict:
+    return processor.synthesize(req.target)
 
 
 @app.post("/api/hypothesize")
