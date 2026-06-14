@@ -134,6 +134,57 @@ _DRUGS: dict[str, dict] = {
                    "ind": "گشادکننده برونش (آسم)", "cls": "آگونیست بتا-۲", "cat": "respiratory"},
     "omeprazole": {"smiles": "COc1ccc2[nH]c(S(=O)Cc3ncc(C)c(OC)c3C)nc2c1", "fa": "امپرازول", "syn": [],
                    "ind": "زخم معده و رفلاکس (مهار پمپ پروتون)", "cls": "PPI", "cat": "git"},
+    "ranitidine": {"smiles": "CNC(=C[N+](=O)[O-])NCCSCc1ccc(CN(C)C)o1", "fa": "رانیتیدین",
+                   "syn": ["zantac"], "ind": "زخم معده (مسدودکننده H2)", "cls": "آنتاگونیست H2",
+                   "cat": "git"},
+
+    # ---- آنتی‌هیستامین‌ها (antihistamines) ----
+    "diphenhydramine": {"smiles": "CN(C)CCOC(c1ccccc1)c1ccccc1", "fa": "دیفن‌هیدرامین",
+                        "syn": ["benadryl"], "ind": "ضدحساسیت و خواب‌آور", "cls": "آنتی‌هیستامین",
+                        "cat": "antihistamine"},
+    "loratadine": {"smiles": "CCOC(=O)N1CCC(=C2c3ccc(Cl)cc3CCc3cccnc32)CC1", "fa": "لوراتادین",
+                   "syn": ["claritin"], "ind": "ضدحساسیت بدون خواب‌آوری", "cls": "آنتی‌هیستامین",
+                   "cat": "antihistamine"},
+    "cetirizine": {"smiles": "OC(=O)COCCN1CCN(C(c2ccccc2)c2ccc(Cl)cc2)CC1", "fa": "ستیریزین",
+                   "syn": ["zyrtec"], "ind": "ضدحساسیت", "cls": "آنتی‌هیستامین", "cat": "antihistamine"},
+
+    # ---- اعصاب و روان (CNS / antidepressants) ----
+    "fluoxetine": {"smiles": "CNCCC(Oc1ccc(C(F)(F)F)cc1)c1ccccc1", "fa": "فلوکستین",
+                   "syn": ["prozac"], "ind": "ضدافسردگی (مهار بازجذب سروتونین)", "cls": "SSRI",
+                   "cat": "cns"},
+    "sertraline": {"smiles": "CNC1CCC(c2ccc(Cl)c(Cl)c2)c2ccccc21", "fa": "سرترالین",
+                   "syn": ["zoloft"], "ind": "ضدافسردگی", "cls": "SSRI", "cat": "cns"},
+    "gabapentin": {"smiles": "NCC1(CC(=O)O)CCCCC1", "fa": "گاباپنتین", "syn": [],
+                   "ind": "درد عصبی و تشنج", "cls": "ضدتشنج", "cat": "cns"},
+
+    # ---- قلبی-عروقی (cardiovascular) ----
+    "warfarin": {"smiles": "CC(=O)CC(c1ccccc1)c1c(O)c2ccccc2oc1=O", "fa": "وارفارین",
+                 "syn": ["coumadin"], "ind": "ضدانعقاد خون", "cls": "آنتاگونیست ویتامین K",
+                 "cat": "cardio"},
+    "losartan": {"smiles": "CCCCc1nc(Cl)c(CO)n1Cc1ccc(-c2ccccc2-c2nnn[nH]2)cc1", "fa": "لوزارتان",
+                 "syn": [], "ind": "فشار خون بالا (آنتاگونیست آنژیوتانسین)", "cls": "ARB",
+                 "cat": "cardio"},
+    "amlodipine": {"smiles": "CCOC(=O)C1=C(COCCN)NC(C)=C(C(=O)OC)C1c1ccccc1Cl", "fa": "آملودیپین",
+                   "syn": [], "ind": "فشار خون و آنژین (مسدودکننده کانال کلسیم)",
+                   "cls": "CCB", "cat": "cardio"},
+    "furosemide": {"smiles": "NS(=O)(=O)c1cc(C(=O)O)c(NCc2ccco2)cc1Cl", "fa": "فوروزماید",
+                   "syn": ["lasix"], "ind": "ادرارآور قوی (نارسایی قلبی/ادم)", "cls": "دیورتیک لوپ",
+                   "cat": "cardio"},
+    "hydrochlorothiazide": {"smiles": "NS(=O)(=O)c1cc2c(cc1Cl)NCNS2(=O)=O", "fa": "هیدروکلروتیازید",
+                            "syn": ["hctz"], "ind": "ادرارآور و کاهش فشار خون", "cls": "دیورتیک تیازیدی",
+                            "cat": "cardio"},
+
+    # ---- ضدمالاریا (antimalarials) ----
+    "chloroquine": {"smiles": "CCN(CC)CCCC(C)Nc1ccnc2cc(Cl)ccc12", "fa": "کلروکین", "syn": [],
+                    "ind": "درمان و پیشگیری مالاریا", "cls": "آمینوکینولین", "cat": "antimalarial"},
+    "hydroxychloroquine": {"smiles": "CCN(CCO)CCCC(C)Nc1ccnc2cc(Cl)ccc12", "fa": "هیدروکسی‌کلروکین",
+                           "syn": ["plaquenil"], "ind": "مالاریا و بیماری‌های خودایمنی",
+                           "cls": "آمینوکینولین", "cat": "antimalarial"},
+
+    # ---- ضدویروس بیشتر ----
+    "favipiravir": {"smiles": "NC(=O)c1nc(F)cnc1O", "fa": "فاوی‌پیراویر", "syn": ["avigan"],
+                    "ind": "آنفلوانزا و برخی عفونت‌های ویروسی", "cls": "مهارکننده RNA پلیمراز",
+                    "cat": "antiviral"},
 }
 
 # Catalogue used for name resolution (non-drug compounds only here).

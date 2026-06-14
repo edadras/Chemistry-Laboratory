@@ -123,6 +123,46 @@ def test_drug_database_metadata():
     assert info and info["category"] == "antibiotic"
 
 
+def test_balance_combustion():
+    from chemlab.balance import balance
+    res = balance([Molecule.parse("propane"), Molecule.from_smiles("O=O")],
+                  [Molecule.from_smiles("O=C=O"), Molecule.from_smiles("O")])
+    assert res is not None
+    assert res["reactant_coeffs"] == [1, 5]
+    assert res["product_coeffs"] == [3, 4]
+
+
+def test_balance_water():
+    from chemlab.balance import balance
+    res = balance([Molecule.from_smiles("[H][H]"), Molecule.from_smiles("O=O")],
+                  [Molecule.from_smiles("O")])
+    assert res["reactant_coeffs"] == [2, 1] and res["product_coeffs"] == [2]
+
+
+def test_outcome_has_balanced_equation():
+    eng = ReactionEngine()
+    out = eng.predict([Molecule.parse("methane"), Molecule.from_smiles("O=O")],
+                      Conditions(temperature_c=600))
+    comb = [o for o in out if o.rule_id == "combustion"][0]
+    d = comb.to_dict(include_svg=False)
+    assert d["balanced_equation"] == "CH4 + 2 O2 → CO2 + 2 H2O"
+
+
+def test_multistep_synthesis():
+    sp = ScenarioProcessor()
+    # phenacetin decomposes in two steps (ether synthesis + amidation)
+    res = sp.synthesize("CCOc1ccc(NC(C)=O)cc1", multistep=True, max_steps=4)
+    assert res["ok"] and res["multistep"]
+    assert len(res["steps"]) >= 2
+    assert any(s["forward_confirmed"] for s in res["steps"])
+    assert res["starting_materials"]
+
+
+def test_expanded_drug_count():
+    from chemlab.known_compounds import all_drugs
+    assert len(all_drugs()) >= 40
+
+
 def test_drug_profile():
     asp = Molecule.parse("آسپرین")
     prof = DrugProfile(asp).to_dict()

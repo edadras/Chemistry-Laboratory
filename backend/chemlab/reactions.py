@@ -22,6 +22,7 @@ from rdkit.Chem import AllChem, rdMolDescriptors
 from .conditions import Conditions, Technique
 from .molecule import Molecule
 from .reaction_data import REACTION_RULES, ReactionRule
+from .balance import balance
 
 
 # Pre-compile and validate all rule SMARTS once.
@@ -48,8 +49,18 @@ class Outcome:
     reason_fa: str
     category: str
     description_fa: str
+    reactants_used: list[Molecule] = field(default_factory=list)
+
+    def balanced(self) -> dict | None:
+        if not self.reactants_used:
+            return None
+        try:
+            return balance(self.reactants_used, self.products)
+        except Exception:
+            return None
 
     def to_dict(self, include_svg: bool = True) -> dict:
+        bal = self.balanced()
         return {
             "rule_id": self.rule_id,
             "rule_name_fa": self.rule_name_fa,
@@ -59,6 +70,8 @@ class Outcome:
             "reason_fa": self.reason_fa,
             "products": [p.to_dict(include_svg=include_svg) for p in self.products],
             "product_summary": " + ".join(p.formula for p in self.products),
+            "reactants_used": [m.formula for m in self.reactants_used],
+            "balanced_equation": bal["equation_fa"] if bal else None,
         }
 
 
@@ -78,14 +91,16 @@ class ReactionEngine:
         self.rules = {r.rid: r for r in REACTION_RULES}
 
     # ----- SMARTS-based prediction --------------------------------------
-    def _apply_rule(self, rule: ReactionRule, reactants: list[Molecule]) -> list[list[Molecule]]:
+    def _apply_rule(self, rule: ReactionRule,
+                    reactants: list[Molecule]) -> list[tuple[list[Molecule], list[Molecule]]]:
         rxn = _COMPILED[rule.rid]
         n = rxn.GetNumReactantTemplates()
-        results: list[list[Molecule]] = []
+        results: list[tuple[list[Molecule], list[Molecule]]] = []
         seen_smiles: set[str] = set()
         # try every ordered selection of n reactants from the pool
-        pool = [m.mol for m in reactants]
-        for combo in itertools.permutations(pool, n) if len(pool) >= n else []:
+        idx = list(range(len(reactants)))
+        for combo_idx in itertools.permutations(idx, n) if len(idx) >= n else []:
+            combo = tuple(reactants[i].mol for i in combo_idx)
             try:
                 product_sets = rxn.RunReactants(combo)
             except Exception:
@@ -98,7 +113,8 @@ class ReactionEngine:
                 if key in seen_smiles:
                     continue
                 seen_smiles.add(key)
-                results.append(mols)
+                used = [reactants[i] for i in combo_idx]
+                results.append((used, mols))
         return results
 
     # ----- special inorganic reactions ----------------------------------
@@ -121,6 +137,7 @@ class ReactionEngine:
                 reason_fa="اسید و باز بلافاصله واکنش می‌دهند و نمک + آب می‌سازند",
                 category="inorganic",
                 description_fa="اسید + باز ⟶ نمک + آب",
+                reactants_used=[acid, base],
             ))
 
         # Combustion: hydrocarbon (C,H[,O] only) + O2 -> CO2 + H2O
@@ -135,6 +152,7 @@ class ReactionEngine:
                 reason_fa="سوخت هیدروکربنی در حضور اکسیژن و جرقه/گرما می‌سوزد",
                 category="inorganic",
                 description_fa="هیدروکربن + O₂ ⟶ CO₂ + H₂O (+ انرژی)",
+                reactants_used=[fuel, o2],
             ))
         return outcomes
 
@@ -160,14 +178,16 @@ class ReactionEngine:
             if not ok and not include_infeasible:
                 continue
             # take the first (most direct) product set per rule
+            used, prods = product_sets[0]
             outcomes.append(Outcome(
                 rule_id=rule.rid,
                 rule_name_fa=rule.name_fa,
-                products=product_sets[0],
+                products=prods,
                 feasible=ok,
                 reason_fa=reason,
                 category=rule.category,
                 description_fa=rule.description_fa,
+                reactants_used=used,
             ))
         outcomes.extend(self._special_reactions(reactants, cond))
         # feasible first

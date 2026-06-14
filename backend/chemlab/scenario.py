@@ -132,57 +132,78 @@ class ScenarioProcessor:
         }
 
     # ----- forward synthesis of a target drug --------------------------
-    def synthesize(self, target_input: str) -> dict:
+    def _build_route(self, target: Molecule, step, include_svg: bool = True) -> dict:
+        """Turn one retro disconnection into a forward-checked synthesis route."""
+        target_canon = Chem.CanonSmiles(target.smiles)
+        cond, note = _SYNTH_CONDITIONS.get(step.rule_id, (Conditions(), "شرایط استاندارد"))
+        confirmed = False
+        balanced = None
+        outcomes = self.engine.predict(step.precursors, cond, include_infeasible=True)
+        for oc in outcomes:
+            if any(_canon_eq(p.smiles, target_canon) for p in oc.products):
+                confirmed = True
+                bal = oc.balanced()
+                balanced = bal["equation_fa"] if bal else None
+                break
+        return {
+            "product": target.formula,
+            "product_smiles": target.smiles,
+            "disconnection": step.rule_id,
+            "explanation_fa": step.explanation_fa,
+            "precursors": [p.to_dict(include_svg=include_svg) for p in step.precursors],
+            "precursor_summary": " + ".join(p.formula for p in step.precursors),
+            "conditions": cond.to_dict(),
+            "conditions_note_fa": note,
+            "forward_confirmed": confirmed,
+            "balanced_equation": balanced,
+        }
+
+    def synthesize(self, target_input: str, multistep: bool = False,
+                   max_steps: int = 4) -> dict:
         """Plan a synthesis: target -> (retro) precursors -> (forward) confirm.
 
-        For each disconnection of the target we propose precursors + suitable
-        conditions, then run the forward engine to check whether the target is
-        actually regenerated, yielding a verified recipe where possible.
+        Single-step mode lists every direct disconnection of the target.
+        Multi-step mode recursively decomposes complex precursors down to
+        simple, catalogue-available starting materials, returning an ordered
+        recipe (base reagents → final drug), each step forward-checked.
         """
         try:
             target = Molecule.parse(target_input)
         except MoleculeError as e:
             return {"ok": False, "errors": [str(e)]}
-        target_canon = Chem.CanonSmiles(target.smiles)
         info = drug_info(target_input) or drug_info(_reverse_lookup(target.smiles) or "")
-
-        steps = self.retro.analyze(target)
-        routes = []
-        for s in steps:
-            cond, note = _SYNTH_CONDITIONS.get(
-                s.rule_id, (Conditions(), "شرایط استاندارد"))
-            confirmed = False
-            forward_product = None
-            outcomes = self.engine.predict(s.precursors, cond, include_infeasible=True)
-            for oc in outcomes:
-                for p in oc.products:
-                    try:
-                        if Chem.CanonSmiles(p.smiles) == target_canon:
-                            confirmed = True
-                            forward_product = oc.to_dict(include_svg=False)
-                            break
-                    except Exception:
-                        continue
-                if confirmed:
-                    break
-            routes.append({
-                "disconnection": s.rule_id,
-                "explanation_fa": s.explanation_fa,
-                "precursors": [p.to_dict() for p in s.precursors],
-                "precursor_summary": " + ".join(p.formula for p in s.precursors),
-                "conditions": cond.to_dict(),
-                "conditions_note_fa": note,
-                "forward_confirmed": confirmed,
-                "forward_product": forward_product,
-            })
-        # confirmed routes first
-        routes.sort(key=lambda r: (not r["forward_confirmed"]))
-        confirmed_n = sum(1 for r in routes if r["forward_confirmed"])
-        return {
+        base = {
             "ok": True,
             "target": target.to_dict(),
             "drug_info": info,
             "pharma": DrugProfile(target).to_dict(),
+        }
+
+        if multistep:
+            steps: list[dict] = []
+            leaves: list[Molecule] = []
+            self._decompose(target, max_steps, steps, leaves, set())
+            confirmed_n = sum(1 for s in steps if s["forward_confirmed"])
+            base.update({
+                "multistep": True,
+                "steps": steps,
+                "starting_materials": _unique_mols(leaves),
+                "summary_fa": (
+                    f"مسیر سنتز {len(steps)} مرحله‌ای برای {target.formula} طراحی شد؛ "
+                    f"{confirmed_n} مرحله رو‌به‌جلو تأیید شد. "
+                    f"مواد اولیه: {'، '.join(m['formula'] for m in _unique_mols(leaves))}."
+                    if steps else
+                    f"{target.formula} با قوانین فعلی تجزیه نشد؛ خود یک ماده اولیه است."
+                ),
+            })
+            return base
+
+        retro_steps = self.retro.analyze(target)
+        routes = [self._build_route(target, s) for s in retro_steps]
+        routes.sort(key=lambda r: (not r["forward_confirmed"]))
+        confirmed_n = sum(1 for r in routes if r["forward_confirmed"])
+        base.update({
+            "multistep": False,
             "routes": routes,
             "summary_fa": (
                 f"برای ساخت {target.formula}، {len(routes)} مسیر پیشنهاد شد؛ "
@@ -190,7 +211,33 @@ class ScenarioProcessor:
                 if routes else
                 f"{target.formula} با قوانین فعلی به پیش‌سازهای ساده‌تر تجزیه نشد."
             ),
-        }
+        })
+        return base
+
+    def _decompose(self, mol: Molecule, depth: int, steps: list[dict],
+                   leaves: list[Molecule], visited: set[str]) -> None:
+        """Post-order recursive disconnection → ordered synthesis steps."""
+        from .retrosynthesis import _CLEAVAGE_RULES
+        if depth <= 0 or mol.smiles in visited:
+            leaves.append(mol)
+            return
+        visited.add(mol.smiles)
+        analysis = self.retro.analyze(mol)
+        cleavages = [s for s in analysis
+                     if s.rule_id in _CLEAVAGE_RULES and len(s.precursors) > 1]
+        if not cleavages:
+            leaves.append(mol)
+            return
+        chosen = cleavages[0]
+        # decompose complex (non-available) precursors first → deeper steps first
+        for p in chosen.precursors:
+            if _is_available(p):
+                leaves.append(p)
+            else:
+                self._decompose(p, depth - 1, steps, leaves, visited)
+        steps.append(self._build_route(mol, chosen, include_svg=False))
+
+    # ----- hypothesis / discovery --------------------------------------
 
     # ----- hypothesis / discovery --------------------------------------
     def hypothesize(self, reactant_inputs: list[str], conditions: Conditions,
@@ -210,6 +257,36 @@ class ScenarioProcessor:
                 f"{sum(1 for h in hyps if h.feasible)} مورد تحت شرایط فعلی شدنی است."
             ),
         }
+
+
+def _canon_eq(smiles_a: str, canon_b: str) -> bool:
+    try:
+        return Chem.CanonSmiles(smiles_a) == canon_b
+    except Exception:
+        return False
+
+
+def _is_available(mol: Molecule) -> bool:
+    """A precursor counts as a purchasable starting material if it's a known
+    catalogue compound or a very small/simple molecule."""
+    if _reverse_lookup(mol.smiles) is not None:
+        return True
+    return mol.mol.GetNumHeavyAtoms() <= 4
+
+
+def _unique_mols(mols: list[Molecule]) -> list[dict]:
+    seen: set[str] = set()
+    out: list[dict] = []
+    for m in mols:
+        if m.smiles in seen:
+            continue
+        seen.add(m.smiles)
+        name = _reverse_lookup(m.smiles)
+        d = m.to_dict()
+        if name:
+            d["known_name"] = name
+        out.append(d)
+    return out
 
 
 def _reverse_lookup(smiles: str) -> str | None:

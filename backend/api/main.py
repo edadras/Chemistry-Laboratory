@@ -63,6 +63,8 @@ class ReverseRequest(BaseModel):
 
 class SynthesizeRequest(BaseModel):
     target: str
+    multistep: bool = False
+    max_steps: int = 4
 
 
 class HypothesisRequest(BaseModel):
@@ -149,7 +151,7 @@ def reverse(req: ReverseRequest) -> dict:
 
 @app.post("/api/synthesize")
 def synthesize(req: SynthesizeRequest) -> dict:
-    return processor.synthesize(req.target)
+    return processor.synthesize(req.target, req.multistep, req.max_steps)
 
 
 @app.post("/api/hypothesize")
