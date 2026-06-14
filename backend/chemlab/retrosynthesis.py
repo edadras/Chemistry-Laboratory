@@ -74,12 +74,13 @@ class Retrosynthesizer:
             if rxn is not None:
                 rxn.Initialize()
                 self._reverse[rid] = (rxn, expl, rule.name_fa)
-        # generic disconnections
+        # generic disconnections (expl is "label: detail")
         for rid, expl, smarts in _GENERIC_DISCONNECTIONS:
             rxn = AllChem.ReactionFromSmarts(smarts)
             if rxn is not None:
                 rxn.Initialize()
-                self._reverse[rid] = (rxn, expl, expl.split(":")[0])
+                label, _, detail = expl.partition(":")
+                self._reverse[rid] = (rxn, detail.strip() or label.strip(), label.strip())
 
     def analyze(self, target: Molecule) -> list[RetroStep]:
         steps: list[RetroStep] = []
