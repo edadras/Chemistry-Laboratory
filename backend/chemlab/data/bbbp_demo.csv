@@ -54,3 +54,16 @@ OS(=O)(=O)O,0,sulfuric_acid
 NC(=O)c1nc(F)cnc1O,0,favipiravir
 Cc1ncc([N+](=O)[O-])n1CCO,0,metronidazole
 O=C(O)c1ccccc1O,0,salicylic_acid
+CN(C)CCOC(c1ccccc1)c1ccccc1,1,diphenhydramine
+CCCC(C(=O)O)CCC,1,valproic_acid
+CC(C)NCC(O)COc1cccc2ccccc12,1,propranolol
+CN(C)CCC=C1c2ccccc2CCc2ccccc21,1,amitriptyline
+CCC1(c2ccccc2)C(=O)NC(=O)NC1=O,1,phenobarbital
+CCN(CC)CC(=O)Nc1c(C)cccc1C,1,lidocaine
+CN(C)CCCN1c2ccccc2Sc2ccc(Cl)cc21,1,chlorpromazine
+CNC1(c2ccccc2Cl)CCCCC1=O,1,ketamine
+CC12CC3CC(C)(C1)CC(N)(C3)C2,1,memantine
+CCOC(=O)C(CCc1ccccc1)NC(C)C(=O)N1CCCC1C(=O)O,0,enalapril
+CC(CS)C(=O)N1CCCC1C(=O)O,0,captopril
+OCC(O)C(O)C(O)C(O)CO,0,sorbitol
+N=C(N)NCCCC(N)C(=O)O,0,arginine

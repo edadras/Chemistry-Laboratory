@@ -46,7 +46,8 @@ backend/
     spectra.py · nlp.py    # محاسبات کمّی، محلول، تقطیر، الکتروشیمی، ADMET، طیف، NLP
     qsar.py                # مدل QSAR واقعی (scikit-learn روی Morgan FP)
     generator.py           # مولد de novo (الگوریتم ژنتیک گرافی)
-    discovery.py           # حلقه‌ی کشف دارو: تولید→QSAR→ADMET→سنتزپذیری→رتبه‌بندی
+    discovery.py           # حلقه‌ی کشف دارو: تولید→QSAR→ADMET→سنتزپذیری→(داکینگ)→رتبه‌بندی
+    docking.py             # داکینگ AutoDock Vina (Phase 4)
     external_db.py         # کلاینت PubChem / ChEMBL
     data/bbbp_demo.csv     # دیتاست آفلاین (نفوذ به سد خونی-مغزی) برای آموزش QSAR
     retrosynthesis.py      # مهندسی معکوس (برش‌های C–N, C–C, FGI و…)
@@ -88,7 +89,7 @@ cd backend && python tests/test_core.py
 | ۱ | اتصال به PubChem/ChEMBL/DrugBank | 🟡 کلاینت آماده (`external_db.py`)؛ نیازمند افزودن هاست به allowlist محیط |
 | ۲ | تولید مولکول جدید | ✅ الگوریتم ژنتیک گرافی (`generator.py`). برای VAE/GNN/Diffusion به GPU نیاز است |
 | ۳ | QSAR | ✅ RandomForest روی اثرانگشت Morgan با اعتبارسنجی متقابل (`qsar.py`) |
-| ۴ | Docking (AutoDock Vina/GNINA) | 🔴 نیازمند زیرساخت سنگین (گیرنده‌ی PDBQT و آماده‌سازی سه‌بعدی) |
+| ۴ | Docking (AutoDock Vina) | ✅ پایپلاین واقعی (`docking.py`): SMILES→سه‌بعدی→PDBQT→Vina؛ با گیرنده‌ی نمونه اجرا می‌شود، برای کار واقعی گیرنده‌ی پروتئینی بدهید |
 | ۵ | ADMET یادگیری‌ماشینی | 🟡 پایه‌ی ML + ADMET قانون‌محور (`admet.py`)؛ قابل گسترش با دیتاست بزرگ‌تر |
 | ۶ | Retrosynthesis چندمرحله‌ای | ✅ جستجوی چندمرحله‌ای با تأیید رو‌به‌جلو (`retrosynthesis.py`/`scenario.py`) |
 | ۷ | اولویت‌بندی خودکار کاندیدها | ✅ امتیاز ترکیبی فعالیت+ADMET+سنتزپذیری (`discovery.py`) |

@@ -27,6 +27,7 @@ from chemlab.scenario import _reverse_lookup
 from chemlab.known_compounds import all_drugs
 from chemlab.qsar import demo_model
 from chemlab.discovery import discover
+from chemlab.docking import dock as run_dock
 from chemlab import external_db
 
 
@@ -116,10 +117,16 @@ class DiscoverRequest(BaseModel):
     population_size: int = 30
     generations: int = 6
     top_k: int = 10
+    use_docking: bool = False
 
 
 class QSARPredictRequest(BaseModel):
     smiles: str
+
+
+class DockRequest(BaseModel):
+    smiles: str
+    exhaustiveness: int = 4
 
 
 class HypothesisRequest(BaseModel):
@@ -294,7 +301,13 @@ def qsar_predict(req: QSARPredictRequest) -> dict:
 def discover_ep(req: DiscoverRequest) -> dict:
     return discover(objective=req.objective, seeds=req.seeds,
                     population_size=min(req.population_size, 60),
-                    generations=min(req.generations, 12), top_k=req.top_k)
+                    generations=min(req.generations, 12), top_k=req.top_k,
+                    use_docking=req.use_docking)
+
+
+@app.post("/api/dock")
+def dock_ep(req: DockRequest) -> dict:
+    return run_dock(req.smiles, exhaustiveness=min(req.exhaustiveness, 8))
 
 
 @app.get("/api/pubchem/{name:path}")

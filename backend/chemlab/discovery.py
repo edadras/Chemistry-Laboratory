@@ -20,6 +20,7 @@ from .molecule import Molecule
 from .qsar import QSARModel, demo_model
 from .generator import evolve
 from .admet import admet
+from .docking import dock as run_dock
 
 # Synthetic-accessibility score (RDKit Contrib sascorer, 1=easy … 10=hard).
 try:
@@ -48,7 +49,7 @@ def _sa_to_score(sa: float) -> float:
     return max(0.0, min(1.0, (10.0 - sa) / 9.0))
 
 
-def candidate_profile(smiles: str, qsar: QSARModel) -> dict | None:
+def candidate_profile(smiles: str, qsar: QSARModel, use_docking: bool = False) -> dict | None:
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return None
@@ -61,9 +62,7 @@ def candidate_profile(smiles: str, qsar: QSARModel) -> dict | None:
     sa_score = _sa_to_score(sa)
     adm = admet(Molecule(mol))
     admet_score = _admet_score(adm)
-    composite = round(100 * (0.45 * activity + 0.30 * admet_score +
-                             0.25 * sa_score), 1)
-    return {
+    profile = {
         "smiles": Chem.MolToSmiles(mol),
         "formula": Chem.rdMolDescriptors.CalcMolFormula(mol),
         "activity_score": round(100 * activity, 1),
@@ -71,10 +70,23 @@ def candidate_profile(smiles: str, qsar: QSARModel) -> dict | None:
         "synthesizability_score": round(100 * sa_score, 1),
         "sa_raw": round(sa, 2),
         "qed": round(qed, 3),
-        "composite_score": composite,
         "admet": adm,
         "qsar_prediction": pred,
     }
+    if use_docking:
+        dk = run_dock(smiles)
+        aff = dk.get("binding_affinity_kcal_mol")
+        profile["docking"] = dk
+        profile["binding_affinity_kcal_mol"] = aff
+        # map affinity (≈ -2..-12) → 0..1 (stronger binding = higher)
+        dock_score = max(0.0, min(1.0, (-(aff or 0) - 2.0) / 8.0))
+        profile["docking_score"] = round(100 * dock_score, 1)
+        composite = 100 * (0.35 * activity + 0.25 * admet_score +
+                           0.20 * sa_score + 0.20 * dock_score)
+    else:
+        composite = 100 * (0.45 * activity + 0.30 * admet_score + 0.25 * sa_score)
+    profile["composite_score"] = round(composite, 1)
+    return profile
 
 
 def _admet_score(adm: dict) -> float:
@@ -91,7 +103,8 @@ def _admet_score(adm: dict) -> float:
 
 def discover(qsar: QSARModel | None = None, objective: str = "activity",
              seeds: list[str] | None = None, population_size: int = 40,
-             generations: int = 8, top_k: int = 10) -> dict:
+             generations: int = 8, top_k: int = 10,
+             use_docking: bool = False) -> dict:
     """Run the full generate→score→rank loop and return ranked candidates."""
     qsar = qsar or demo_model()
 
@@ -114,7 +127,7 @@ def discover(qsar: QSARModel | None = None, objective: str = "activity",
                     generations=generations)
     candidates = []
     for smi, _fit in result.population[:top_k]:
-        prof = candidate_profile(smi, qsar)
+        prof = candidate_profile(smi, qsar, use_docking=use_docking)
         if prof:
             candidates.append(prof)
     candidates.sort(key=lambda c: c["composite_score"], reverse=True)

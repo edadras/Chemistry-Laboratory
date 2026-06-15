@@ -301,6 +301,22 @@ def test_discovery_ranks_candidates():
         assert "activity_score" in c and "admet_score" in c and "synthesizability_score" in c
 
 
+def test_docking_runs_or_estimates():
+    from chemlab.docking import dock
+    res = dock("CC(=O)Oc1ccccc1C(=O)O")  # aspirin
+    assert res["ok"]
+    assert "binding_affinity_kcal_mol" in res
+    assert res["binding_affinity_kcal_mol"] < 0  # affinity is negative kcal/mol
+
+
+def test_discovery_with_docking():
+    from chemlab.discovery import discover
+    res = discover(objective="qed", population_size=14, generations=2,
+                   top_k=3, use_docking=True)
+    assert res["ok"] and res["candidates"]
+    assert all("docking_score" in c for c in res["candidates"])
+
+
 def test_external_db_graceful_when_blocked():
     from chemlab.external_db import pubchem_by_name
     res = pubchem_by_name("aspirin")

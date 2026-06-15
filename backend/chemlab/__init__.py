@@ -32,6 +32,7 @@ from .nlp import parse_scenario
 from .qsar import QSARModel, demo_model, featurize
 from .generator import evolve, mutate, crossover
 from .discovery import discover, candidate_profile, synth_accessibility
+from .docking import dock
 from . import external_db
 
 __version__ = "0.1.0"
@@ -56,5 +57,5 @@ __all__ = [
     "QSARModel", "demo_model", "featurize",
     "evolve", "mutate", "crossover",
     "discover", "candidate_profile", "synth_accessibility",
-    "external_db",
+    "dock", "external_db",
 ]

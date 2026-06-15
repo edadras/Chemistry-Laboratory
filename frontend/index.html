@@ -616,6 +616,7 @@ async function tabDiscover(){
       <div><label>نسل‌ها</label><input id="dc_gen" type="number" value="6"></div>
       <div><label>تعداد کاندید</label><input id="dc_k" type="number" value="8"></div>
     </div>
+    <div class="chk"><input id="dc_dock" type="checkbox"><label style="margin:0">محاسبه‌ی داکینگ با AutoDock Vina (گیرنده‌ی نمونه) — کندتر</label></div>
     <button class="go" onclick="runDiscover()">تولید و رتبه‌بندی کاندیدها 🧬</button>
     <p class="hint">⏳ تولید مولکول و ارزیابی چند ده‌ثانیه طول می‌کشد.</p>
     <div id="dc_out"></div>
@@ -630,7 +631,7 @@ async function runDiscover(){
   try{
     const res=await api('/api/discover',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({objective:$('#dc_obj').value,population_size:parseInt($('#dc_pop').value),
-        generations:parseInt($('#dc_gen').value),top_k:parseInt($('#dc_k').value)})});
+        generations:parseInt($('#dc_gen').value),top_k:parseInt($('#dc_k').value),use_docking:$('#dc_dock').checked})});
     if(!res.ok){ out.innerHTML=`<p class="err">${res.error_fa||'خطا'}</p>`; return; }
     let html=`<div class="summary">${res.summary_fa}</div>
       <div class="hint">مدل: ${res.model.name} · ${Object.entries(res.model.metrics).map(([k,v])=>k+'='+v).join(' · ')} · هدف: ${res.objective}</div>`;
@@ -644,6 +645,7 @@ async function runDiscover(){
           <div class="scorebar">فعالیت: ${c.activity_score}<div class="bar"><span style="width:${c.activity_score}%"></span></div></div>
           <div class="scorebar">ADMET: ${c.admet_score}<div class="bar"><span style="width:${c.admet_score}%"></span></div></div>
           <div class="scorebar">سنتزپذیری: ${c.synthesizability_score}<div class="bar"><span style="width:${c.synthesizability_score}%"></span></div></div>
+          ${c.docking_score!==undefined?`<div class="scorebar">داکینگ: ${c.docking_score} (${c.binding_affinity_kcal_mol} kcal/mol)<div class="bar"><span style="width:${c.docking_score}%"></span></div></div>`:''}
           <div class="thermo"><span class="pill">QED: ${c.qed}</span><span class="pill">SA: ${c.sa_raw}</span>
             <span class="pill">${c.admet.absorption_fa}</span></div>
         </div></div>`;

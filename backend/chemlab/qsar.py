@@ -19,7 +19,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from rdkit import Chem
-from rdkit.Chem import AllChem
+from rdkit.Chem import rdFingerprintGenerator
+from rdkit import DataStructs
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import cross_val_predict, cross_val_score
 from sklearn.metrics import (roc_auc_score, accuracy_score, r2_score,
@@ -31,15 +32,16 @@ _DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 DEMO_DATASET = os.path.join(_DATA_DIR, "bbbp_demo.csv")
 FP_BITS = 1024
 FP_RADIUS = 2
+_FPGEN = rdFingerprintGenerator.GetMorganGenerator(radius=FP_RADIUS, fpSize=FP_BITS)
 
 
 def featurize(smiles: str) -> np.ndarray | None:
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return None
-    fp = AllChem.GetMorganFingerprintAsBitVect(mol, FP_RADIUS, nBits=FP_BITS)
+    fp = _FPGEN.GetFingerprint(mol)
     arr = np.zeros((FP_BITS,), dtype=np.int8)
-    AllChem.DataStructs.ConvertToNumpyArray(fp, arr)
+    DataStructs.ConvertToNumpyArray(fp, arr)
     return arr
 
 
