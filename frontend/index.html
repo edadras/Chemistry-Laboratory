@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🧪 آزمایشگاه شیمی هوشمند</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c2330; --border:#2a3240;
+    --accent:#22d3ee; --accent2:#a78bfa; --ok:#34d399; --bad:#f87171;
+    --text:#e6edf3; --muted:#8b97a7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Vazirmatn,Tahoma,system-ui,sans-serif;background:var(--bg);
+       color:var(--text);line-height:1.8}
+  header{padding:18px 24px;background:linear-gradient(120deg,#10243a,#1a1030);
+         border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px}
+  header h1{font-size:20px;margin:0}
+  header .sub{color:var(--muted);font-size:13px}
+  .tabs{display:flex;gap:6px;padding:12px 24px 0;flex-wrap:wrap;background:var(--bg)}
+  .tab{padding:9px 16px;border:1px solid var(--border);border-bottom:none;
+       border-radius:10px 10px 0 0;cursor:pointer;background:var(--panel);color:var(--muted)}
+  .tab.active{background:var(--panel2);color:var(--accent);border-color:var(--accent)}
+  main{padding:20px 24px;max-width:1100px;margin:0 auto}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;
+        padding:18px;margin-bottom:18px}
+  label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+  input,select,textarea{width:100%;background:var(--panel2);border:1px solid var(--border);
+        color:var(--text);border-radius:9px;padding:10px;font-family:inherit;font-size:14px}
+  textarea{resize:vertical;min-height:64px}
+  .row{display:flex;gap:12px;flex-wrap:wrap}
+  .row>div{flex:1;min-width:140px}
+  .chk{display:flex;align-items:center;gap:8px;margin-top:24px}
+  .chk input{width:auto}
+  button.go{margin-top:16px;background:linear-gradient(120deg,var(--accent),var(--accent2));
+        color:#07111a;border:none;padding:12px 22px;border-radius:10px;font-weight:700;
+        cursor:pointer;font-size:15px;font-family:inherit}
+  button.go:hover{opacity:.9}
+  .hint{font-size:12px;color:var(--muted)}
+  .summary{background:var(--panel2);border-right:3px solid var(--accent);padding:12px 14px;
+        border-radius:8px;margin:12px 0}
+  .mol{display:flex;gap:14px;align-items:center;background:var(--panel2);border:1px solid var(--border);
+        border-radius:12px;padding:12px;margin:8px 0;flex-wrap:wrap}
+  .mol svg{background:#fff;border-radius:8px}
+  .mol .meta{flex:1;min-width:200px}
+  .tag{display:inline-block;background:#0f2a33;color:var(--accent);border:1px solid #1d4250;
+        border-radius:20px;padding:2px 10px;font-size:12px;margin:3px 3px 0 0}
+  .tag.ok{background:#0f2e23;color:var(--ok);border-color:#1d513b}
+  .tag.bad{background:#321617;color:var(--bad);border-color:#5a2729}
+  .tag.muted{background:#1c2330;color:var(--muted);border-color:var(--border)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  td,th{border:1px solid var(--border);padding:6px 8px;text-align:right}
+  th{background:var(--panel2);color:var(--muted)}
+  .grid118{display:grid;grid-template-columns:repeat(18,1fr);gap:3px}
+  .el{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+        border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:10px;background:var(--panel2)}
+  .el b{font-size:13px}
+  .el small{color:var(--muted);font-size:8px}
+  .el:hover{border-color:var(--accent);transform:scale(1.12);transition:.1s}
+  .loading{color:var(--accent)}
+  .err{color:var(--bad)}
+  .kv{font-size:13px;color:var(--muted)}
+  .kv b{color:var(--text)}
+  details{margin-top:8px}
+  summary{cursor:pointer;color:var(--accent2)}
+  .examples{margin-top:6px}
+  .examples span{cursor:pointer;color:var(--accent);font-size:12px;margin-left:10px;
+        text-decoration:underline dotted}
+  /* synthesis flow diagram */
+  .flow{display:flex;flex-direction:column;align-items:center;gap:0;margin:14px 0}
+  .flow .node{background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+        padding:8px 14px;font-weight:700;text-align:center;min-width:90px}
+  .flow .node.start{border-color:var(--accent);color:var(--accent)}
+  .flow .node.final{border-color:var(--ok);color:var(--ok);font-size:16px}
+  .flow .reagents{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .flow .arrow{display:flex;flex-direction:column;align-items:center;color:var(--muted);
+        padding:2px 0}
+  .flow .arrow .cond{font-size:11px;background:#10243a;border:1px solid #1d4250;color:var(--accent);
+        border-radius:14px;padding:1px 10px;margin-bottom:2px;max-width:340px}
+  .flow .arrow .line{font-size:20px;line-height:1}
+  .flow .plus{color:var(--muted);align-self:center;font-size:18px}
+  .thermo{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .thermo .pill{background:var(--panel);border:1px solid var(--border);border-radius:8px;
+        padding:4px 10px;font-size:12px}
+  .bar{height:8px;background:#10243a;border-radius:6px;overflow:hidden;margin-top:4px;border:1px solid var(--border)}
+  .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--ok))}
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:30px">🧪</span>
+  <div>
+    <h1>آزمایشگاه شیمی هوشمند</h1>
+    <div class="sub">شبیه‌سازی واکنش · مهندسی معکوس · فرضیه‌سازی خودکار · تحلیل دارویی</div>
+  </div>
+</header>
+
+<div class="tabs" id="tabs"></div>
+<main id="main"></main>
+
+<script>
+const API = location.origin;
+const $ = (s,el=document)=>el.querySelector(s);
+async function api(path, opts){
+  const r = await fetch(API+path, opts);
+  if(!r.ok){ const e = await r.json().catch(()=>({detail:r.statusText})); throw new Error(e.detail||'خطا'); }
+  return r.json();
+}
+
+// ---------- conditions form (shared) ----------
+function conditionsForm(prefix){
+  return `
+  <div class="row">
+    <div><label>دما (°C)</label><input id="${prefix}_temp" type="number" value="25"></div>
+    <div><label>فشار (atm)</label><input id="${prefix}_pres" type="number" value="1"></div>
+    <div><label>رطوبت (%)</label><input id="${prefix}_hum" type="number" value="50"></div>
+    <div><label>pH</label><input id="${prefix}_ph" type="number" placeholder="اختیاری"></div>
+  </div>
+  <div class="row">
+    <div><label>کاتالیزور</label><input id="${prefix}_cat" placeholder="مثلاً H2SO4 یا Pd"></div>
+    <div><label>حلال</label><input id="${prefix}_solv" placeholder="اختیاری"></div>
+    <div><label>تکنیک</label><select id="${prefix}_tech"></select></div>
+    <div class="chk"><input id="${prefix}_light" type="checkbox"><label style="margin:0">حضور نور (UV)</label></div>
+  </div>`;
+}
+function readConditions(prefix){
+  const v=id=>$('#'+prefix+'_'+id).value;
+  const tech=$('#'+prefix+'_tech').value;
+  return {
+    temperature_c:parseFloat(v('temp'))||25, pressure_atm:parseFloat(v('pres'))||1,
+    humidity_pct:parseFloat(v('hum'))||50,
+    ph: v('ph')===''?null:parseFloat(v('ph')),
+    catalyst:v('cat')||null, solvent:v('solv')||null,
+    light:$('#'+prefix+'_light').checked,
+    techniques: tech&&tech!=='none'?[tech]:[]
+  };
+}
+async function fillTechniques(prefix){
+  const {techniques}=await api('/api/techniques');
+  $('#'+prefix+'_tech').innerHTML=techniques.map(t=>`<option value="${t.id}">${t.name_fa}</option>`).join('');
+}
+
+// ---------- rendering helpers ----------
+function molCard(m, extraTags=[]){
+  const d=m.descriptors||{};
+  const tags=[`<span class="tag">جرم مولی: ${m.molar_mass}</span>`,
+    d.logp!==undefined?`<span class="tag">LogP: ${d.logp}</span>`:'',
+    m.rings&&m.rings.num_rings?`<span class="tag">حلقه: ${m.rings.num_rings}</span>`:'',
+    ...extraTags].join('');
+  return `<div class="mol">
+    <div>${m.svg||''}</div>
+    <div class="meta">
+      <div style="font-size:16px"><b>${m.formula}</b></div>
+      <div class="kv">SMILES: <code>${m.smiles}</code></div>
+      <div>${tags}</div>
+    </div></div>`;
+}
+function bondsTable(m){
+  if(!m.bonds||!m.bonds.length) return '';
+  const rows=m.bonds.map(b=>`<tr><td>${b.begin}–${b.end}</td><td>${b.type_fa}</td>
+     <td>${b.is_in_ring?'بله':'خیر'}</td><td>${b.is_conjugated?'بله':'خیر'}</td></tr>`).join('');
+  return `<details><summary>پیوندها (${m.bonds.length})</summary>
+    <table><tr><th>اتم‌ها</th><th>نوع پیوند</th><th>در حلقه</th><th>مزدوج</th></tr>${rows}</table></details>`;
+}
+
+// ============ TAB: REACTION ============
+function tabReact(){
+  $('#main').innerHTML=`<div class="card">
+    <h3>سناریوی زبان طبیعی</h3>
+    <p class="hint">سناریو را به زبان روزمره بنویسید؛ سیستم خودش مواد و شرایط را استخراج و واکنش را پیش‌بینی می‌کند.</p>
+    <textarea id="nl_text" placeholder="مثلاً: استیک اسید و اتانول را با کاتالیزور سولفوریک اسید در دمای ۸۰ درجه حرارت بده"></textarea>
+    <div class="examples">نمونه:
+      <span onclick="$('#nl_text').value='استیک اسید و اتانول را با کاتالیزور سولفوریک اسید در دمای ۸۰ درجه حرارت بده';runNL()">استری‌شدن</span>
+      <span onclick="$('#nl_text').value='متان را در حضور اکسیژن در دمای ۶۰۰ درجه بسوزان';runNL()">احتراق</span>
+      <span onclick="$('#nl_text').value='بنزن و کلر را با کاتالیزور FeCl3 واکنش بده';runNL()">هالوژناسیون</span>
+    </div>
+    <button class="go" onclick="runNL()">تفسیر و شبیه‌سازی متن 🗣️</button>
+    <div id="nl_out"></div>
+  </div>
+  <div class="card">
+    <h3>ورودی ساختاریافته</h3>
+    <label>مواد اولیه (هر کدام در یک خط یا با کاما — نام فارسی، انگلیسی یا SMILES)</label>
+    <textarea id="rx_reactants" placeholder="acetic acid&#10;ethanol"></textarea>
+    <div class="examples">نمونه:
+      <span onclick="setRx('acetic acid\\nethanol','H2SO4',80)">استری‌شدن</span>
+      <span onclick="setRx('hydrochloric acid\\nsodium hydroxide','',25)">خنثی‌سازی</span>
+      <span onclick="setRx('methane\\nO=O','',600)">احتراق متان</span>
+    </div>
+    ${conditionsForm('rx')}
+    <div class="chk"><input id="rx_pharma" type="checkbox"><label style="margin:0">تحلیل دارویی محصولات</label></div>
+    <button class="go" onclick="runReact()">شبیه‌سازی کن ▶</button>
+    <div id="rx_out"></div>
+  </div>`;
+  fillTechniques('rx');
+}
+function setRx(r,cat,t){ $('#rx_reactants').value=r; $('#rx_cat').value=cat; $('#rx_temp').value=t; }
+async function runNL(){
+  const out=$('#nl_out'); out.innerHTML='<p class="loading">در حال تفسیر متن…</p>';
+  try{
+    const res=await api('/api/scenario_nl',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text:$('#nl_text').value})});
+    let html=`<div class="summary">${res.nl_parse?res.nl_parse.parsed_fa:''}</div>`;
+    if(!res.ok){ out.innerHTML=html+`<p class="err">${(res.errors||[]).join(' / ')}</p>`; return; }
+    html+=`<div class="summary">${res.summary_fa}</div>`;
+    if(res.main_product){
+      const mp=res.main_product;
+      if(mp.balanced_equation) html+=`<div class="kv">معادله: <b>${mp.balanced_equation}</b></div>`;
+      if(mp.thermodynamics||mp.kinetics) html+=thermoKinBlock(mp.thermodynamics,mp.kinetics);
+      html+=mp.products.map(p=>molCard(p)).join('');
+    }
+    out.innerHTML=html;
+  }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
+}
+async function runReact(){
+  const out=$('#rx_out'); out.innerHTML='<p class="loading">در حال پردازش…</p>';
+  const reactants=$('#rx_reactants').value.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
+  try{
+    const res=await api('/api/react',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({reactants,conditions:readConditions('rx'),pharma_mode:$('#rx_pharma').checked})});
+    if(!res.ok){ out.innerHTML=`<p class="err">${(res.errors||[]).join(' / ')}</p>`; return; }
+    let html=`<div class="summary">${res.summary_fa}</div>`;
+    html+=`<h4>مواد اولیه</h4>`+res.reactants.map(m=>molCard(m)).join('');
+    if(res.main_product){
+      const mp=res.main_product;
+      html+=`<h4>مسیر اصلی: ${mp.rule_name_fa}
+        <span class="tag ${mp.feasible?'ok':'bad'}">${mp.feasible?'شدنی':'غیرشدنی در این شرایط'}</span></h4>`;
+      html+=`<div class="hint">${mp.description_fa} — ${mp.reason_fa}</div>`;
+      if(mp.balanced_equation){ html+=`<div class="summary">معادله موازنه‌شده: <b>${mp.balanced_equation}</b></div>`; }
+      if(mp.thermodynamics||mp.kinetics){ html+=thermoKinBlock(mp.thermodynamics,mp.kinetics); }
+      html+=mp.products.map(p=>molCard(p)).join('');
+      mp.products.forEach(p=>{html+=bondsTable(p);});
+    }
+    if(res.pharma){
+      html+=`<h4>تحلیل دارویی</h4>`;
+      for(const [f,pr] of Object.entries(res.pharma)){ html+=pharmaBlock(f,pr); }
+    }
+    const others=res.outcomes.filter(o=>!res.main_product||o.rule_id!==res.main_product.rule_id);
+    if(others.length){
+      html+=`<details><summary>سایر مسیرهای ممکن (${others.length})</summary>`+
+        others.map(o=>`<div class="mol"><div class="meta"><b>${o.rule_name_fa}</b>
+        <span class="tag ${o.feasible?'ok':'bad'}">${o.feasible?'شدنی':'غیرشدنی'}</span>
+        <div class="kv">${o.product_summary} — ${o.reason_fa}</div></div></div>`).join('')+`</details>`;
+    }
+    out.innerHTML=html;
+  }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
+}
+
+function pharmaBlock(f,pr){
+  const ro=pr.lipinski, ve=pr.veber;
+  const alerts=(pr.structural_alerts||[]).map(a=>`<span class="tag bad">${a}</span>`).join('')||'<span class="tag ok">بدون هشدار ساختاری</span>';
+  return `<div class="mol"><div class="meta">
+    <b>${f}</b>
+    <div>${ro.violations.length?`<span class="tag bad">نقض لیپینسکی: ${ro.violations.length}</span>`:'<span class="tag ok">عبور از لیپینسکی</span>'}
+    <span class="tag">QED: ${pr.qed}</span>
+    <span class="tag ${ve.oral_bioavailability_ok?'ok':'bad'}">زیست‌دسترسی خوراکی: ${ve.oral_bioavailability_ok?'مطلوب':'ضعیف'}</span></div>
+    <div class="kv">MW=${ro.molecular_weight} · LogP=${ro.logp} · HBD=${ro.h_bond_donors} · HBA=${ro.h_bond_acceptors} · TPSA=${ve.tpsa}</div>
+    <div>${alerts}</div>
+    <div class="summary">${pr.verdict_fa}</div>
+  </div></div>`;
+}
+
+function thermoKinBlock(th,kin){
+  let html='<div class="thermo">';
+  if(th){
+    html+=`<span class="pill">ΔH = <b>${th.delta_h_kj}</b> kJ/mol · ${th.type_fa}</span>`;
+    html+=`<span class="pill">ΔG ≈ <b>${th.delta_g_kj}</b> kJ/mol</span>`;
+    html+=`<span class="pill">${th.spontaneity_fa}</span>`;
+  }
+  if(kin){
+    html+=`<span class="pill">سرعت: <b>${kin.rate_fa}</b></span>`;
+    if(kin.relative_rate!==undefined) html+=`<span class="pill">نرخ نسبی (×۲۵°C): <b>${kin.relative_rate}</b></span>`;
+  }
+  html+='</div>';
+  if(kin&&kin.estimated_yield_pct!==undefined){
+    html+=`<div class="kv">بازده تخمینی: <b>${kin.estimated_yield_pct}%</b> — ${kin.note_fa||''}</div>
+      <div class="bar"><span style="width:${kin.estimated_yield_pct}%"></span></div>`;
+  }
+  if(th&&th.is_estimate) html+=`<div class="hint">${th.note_fa}</div>`;
+  return html;
+}
+
+// build a CSS flow diagram for a multi-step synthesis
+function flowDiagram(steps, startingMaterials, finalFormula){
+  let html='<div class="flow">';
+  html+=`<div class="reagents">${startingMaterials.map(m=>`<div class="node start">${m.known_name?m.known_name+' ':''}${m.formula}</div>`).join('<span class="plus">+</span>')}</div>`;
+  steps.forEach((s,i)=>{
+    const cond=s.conditions_note_fa||'';
+    const th=s.thermodynamics?` · ΔH=${s.thermodynamics.delta_h_kj}kJ`:'';
+    const yld=s.kinetics?` · بازده ~${s.kinetics.estimated_yield_pct}%`:'';
+    html+=`<div class="arrow"><div class="cond">${cond}${th}${yld}</div><div class="line">↓</div>
+      <div class="hint">${s.disconnection}${s.forward_confirmed?' ✓':''}</div></div>`;
+    const isFinal=(i===steps.length-1);
+    html+=`<div class="node ${isFinal?'final':''}">${s.product}</div>`;
+  });
+  html+='</div>';
+  return html;
+}
+
+// ============ TAB: REVERSE ============
+function tabReverse(){
+  $('#main').innerHTML=`<div class="card">
+    <h3>مهندسی معکوس (Retrosynthesis)</h3>
+    <label>ماده/داروی هدف (نام یا SMILES)</label>
+    <input id="rv_target" placeholder="مثلاً آسپرین یا CC(=O)Oc1ccccc1C(=O)O">
+    <div class="examples">نمونه:
+      <span onclick="$('#rv_target').value='آسپرین';runReverse()">آسپرین</span>
+      <span onclick="$('#rv_target').value='استامینوفن';runReverse()">استامینوفن</span>
+      <span onclick="$('#rv_target').value='ibuprofen';runReverse()">ایبوپروفن</span>
+    </div>
+    <label>عمق تجزیه</label><input id="rv_depth" type="number" value="3" style="max-width:120px">
+    <button class="go" onclick="runReverse()">تجزیه کن ◀</button>
+    <div id="rv_out"></div>
+  </div>`;
+}
+async function runReverse(){
+  const out=$('#rv_out'); out.innerHTML='<p class="loading">در حال تجزیه…</p>';
+  try{
+    const res=await api('/api/reverse',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({target:$('#rv_target').value,max_depth:parseInt($('#rv_depth').value)||3})});
+    if(!res.ok){ out.innerHTML=`<p class="err">${(res.errors||[]).join(' / ')}</p>`; return; }
+    let html=`<div class="summary">${res.summary_fa}</div>`;
+    if(res.pharma){ html+=`<div class="hint">داروی شناخته‌شده: <b>${res.pharma.name}</b> — ${res.pharma.indication_fa||''} (${res.pharma.drug_class_fa||''})</div>`; }
+    html+=`<h4>هدف</h4>`+molCard(res.target);
+    html+=`<h4>مسیرهای تجزیه (${res.steps.length})</h4>`;
+    res.steps.forEach(s=>{
+      html+=`<div class="card" style="background:var(--panel2)"><b>${s.explanation_fa}</b>
+        <div class="kv">پیش‌سازها: ${s.precursor_summary}</div>`+
+        s.precursors.map(p=>molCard(p)).join('')+`</div>`;
+    });
+    const bc=res.base_components.base_components;
+    html+=`<h4>اجزای پایه</h4><div>${bc.map(s=>`<span class="tag">${s}</span>`).join('')}</div>`;
+    out.innerHTML=html;
+  }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
+}
+
+// ============ TAB: HYPOTHESIS ============
+function tabHypo(){
+  $('#main').innerHTML=`<div class="card">
+    <h3>فرضیه‌سازی و آزمایش خودکار</h3>
+    <p class="hint">سیستم همه ترکیب‌های ممکن مواد را می‌سازد، واکنش‌ها را آزمایش و محصولات را (در حالت دارویی) بر اساس شباهت دارویی رتبه‌بندی می‌کند.</p>
+    <label>مخزن مواد (نام/SMILES، هر کدام در یک خط)</label>
+    <textarea id="hy_reactants" placeholder="acetic acid&#10;salicylic acid&#10;ethanol"></textarea>
+    <div class="examples">نمونه:
+      <span onclick="$('#hy_reactants').value='acetic acid\\nsalicylic acid\\nethanol\\nammonia'">کشف آسپرین</span>
+    </div>
+    ${conditionsForm('hy')}
+    <div class="chk"><input id="hy_pharma" type="checkbox" checked><label style="margin:0">حالت دارویی (رتبه‌بندی با QED)</label></div>
+    <button class="go" onclick="runHypo()">فرضیه بساز و آزمایش کن 🔬</button>
+    <div id="hy_out"></div>
+  </div>`;
+  fillTechniques('hy'); $('#hy_temp').value=80; $('#hy_cat').value='H2SO4';
+}
+async function runHypo(){
+  const out=$('#hy_out'); out.innerHTML='<p class="loading">در حال فرضیه‌سازی…</p>';
+  const reactants=$('#hy_reactants').value.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
+  try{
+    const res=await api('/api/hypothesize',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({reactants,conditions:readConditions('hy'),pharma_mode:$('#hy_pharma').checked,top_k:12})});
+    if(!res.ok){ out.innerHTML=`<p class="err">${(res.errors||[]).join(' / ')}</p>`; return; }
+    let html=`<div class="summary">${res.summary_fa}</div>`;
+    res.hypotheses.forEach((h,i)=>{
+      html+=`<div class="card" style="background:var(--panel2)">
+        <div><span class="tag ${h.feasible?'ok':'bad'}">${h.feasible?'شدنی':'غیرشدنی'}</span>
+          <span class="tag">امتیاز ${h.score}</span> <b>#${i+1}</b></div>
+        <div>${h.statement_fa}</div>
+        <div class="kv">${h.verdict_fa}</div></div>`;
+    });
+    out.innerHTML=html;
+  }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
+}
+
+// ============ TAB: MOLECULE ============
+function tabMolecule(){
+  $('#main').innerHTML=`<div class="card">
+    <h3>کاوشگر مولکول</h3>
+    <label>نام یا SMILES</label>
+    <input id="mx_q" placeholder="کافئین یا CN1C=NC2=C1C(=O)N(C(=O)N2C)C">
+    <div class="examples">نمونه:
+      <span onclick="$('#mx_q').value='کافئین';runMol()">کافئین</span>
+      <span onclick="$('#mx_q').value='گلوکز';runMol()">گلوکز</span>
+      <span onclick="$('#mx_q').value='penicillin g';runMol()">پنی‌سیلین</span>
+    </div>
+    <button class="go" onclick="runMol()">تحلیل کن 🔍</button>
+    <div id="mx_out"></div>
+  </div>`;
+}
+async function runMol(){
+  const out=$('#mx_out'); out.innerHTML='<p class="loading">…</p>';
+  try{
+    const m=await api('/api/molecule/'+encodeURIComponent($('#mx_q').value));
+    let html=molCard(m);
+    if(m.known_name){ html+=`<div class="hint">شناخته‌شده: <b>${m.known_name}</b>`+
+      (m.indication?` — ${m.indication.indication_fa} (${m.indication.drug_class_fa})`:'')+`</div>`; }
+    const ac=Object.entries(m.atom_counts).map(([k,v])=>`<span class="tag">${k}: ${v}</span>`).join('');
+    html+=`<div style="margin:8px 0">ترکیب اتمی: ${ac}</div>`;
+    html+=bondsTable(m);
+    if(m.pharma){ html+=`<h4>تحلیل دارویی</h4>`+pharmaBlock(m.formula,m.pharma); }
+    out.innerHTML=html;
+    // ADMET (deep pharmacology) — fetched separately
+    try{
+      const a=await api('/api/admet/'+encodeURIComponent($('#mx_q').value));
+      let ah=`<h4>ADMET (داروشناسی عمیق)</h4><div class="thermo">
+        <span class="pill">جذب: ${a.absorption_fa}</span>
+        <span class="pill">توزیع: ${a.distribution_fa}</span>
+        <span class="pill">متابولیسم: ${a.metabolism_fa}</span>
+        <span class="pill">دفع: ${a.excretion_fa}</span>
+        <span class="pill">سمیت: ${a.toxicity_fa}</span></div>
+        <div class="hint">${a.disclaimer_fa}</div>`;
+      out.innerHTML+=ah;
+    }catch(e){}
+  }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
+}
+
+// ============ TAB: PERIODIC ============
+async function tabPeriodic(){
+  $('#main').innerHTML=`<div class="card"><h3>جدول تناوبی</h3>
+    <div id="pt_grid" class="grid118"><span class="loading">در حال بارگذاری…</span></div>
+    <div id="pt_detail"></div></div>`;
+  const {elements}=await api('/api/elements');
+  const catColor={alkali_metal:'#3a2a10',alkaline_earth_metal:'#2a3210',transition_metal:'#10283a',
+    post_transition_metal:'#1a2a2a',metalloid:'#2a1a2a',nonmetal:'#103a2a',halogen:'#3a103a',
+    noble_gas:'#2a1030',lanthanide:'#3a2030',actinide:'#301a20'};
+  // place by group/period; lanthanides/actinides simplified into the main grid order
+  $('#pt_grid').innerHTML=elements.map(e=>{
+    const col=catColor[e.category]||'#1c2330';
+    return `<div class="el" style="background:${col}" title="${e.name_fa||e.name}" onclick='showEl(${JSON.stringify(e)})'>
+      <small>${e.atomic_number}</small><b>${e.symbol}</b></div>`;
+  }).join('');
+}
+function showEl(e){
+  $('#pt_detail').innerHTML=`<div class="card" style="background:var(--panel2);margin-top:14px">
+    <h3 style="margin-top:0">${e.symbol} — ${e.name} ${e.name_fa?'('+e.name_fa+')':''}</h3>
+    <div class="kv">عدد اتمی: <b>${e.atomic_number}</b> · جرم: <b>${e.atomic_mass}</b> · دسته: <b>${e.category_fa}</b></div>
+    <div class="kv">آرایش الکترونی: <b>${e.electron_config||'—'}</b> · الکترونگاتیوی: <b>${e.electronegativity??'—'}</b></div>
+    <div class="kv">نقطه ذوب: <b>${e.melting_point_k||'—'} K</b> · نقطه جوش: <b>${e.boiling_point_k||'—'} K</b> · حالت: <b>${e.phase_stp||'—'}</b></div>
+    <div class="kv">حالات اکسایش: <b>${(e.oxidation_states||[]).join(', ')||'—'}</b> · ظرفیت: <b>${(e.common_valence||[]).join(', ')||'—'}</b></div>
+    ${e.biological_role?`<div class="summary">نقش زیستی: ${e.biological_role}</div>`:''}
+  </div>`;
+}
+
+// ============ TAB: SYNTHESIS ============
+function tabSynth(){
+  $('#main').innerHTML=`<div class="card">
+    <h3>سنتز دارو (پیش‌بینی رو‌به‌جلو)</h3>
+    <p class="hint">داروی هدف را می‌دهید؛ سیستم با مهندسی معکوس پیش‌سازها را می‌یابد، شرایط مناسب را پیشنهاد می‌دهد و با شبیه‌سازی رو‌به‌جلو بازتولید دارو را تأیید می‌کند.</p>
+    <label>داروی هدف (نام یا SMILES)</label>
+    <input id="sy_target" placeholder="مثلاً آسپرین">
+    <div class="examples">نمونه:
+      <span onclick="$('#sy_target').value='آسپرین';runSynth()">آسپرین</span>
+      <span onclick="$('#sy_target').value='استامینوفن';runSynth()">استامینوفن</span>
+      <span onclick="$('#sy_target').value='CCOc1ccc(NC(C)=O)cc1';$('#sy_multi').checked=true;runSynth()">فناستین (چندمرحله‌ای)</span>
+    </div>
+    <div class="chk"><input id="sy_multi" type="checkbox"><label style="margin:0">سنتز چندمرحله‌ای (تجزیه تا مواد اولیه ساده)</label></div>
+    <button class="go" onclick="runSynth()">طراحی سنتز ⚗️</button>
+    <div id="sy_out"></div></div>`;
+}
+async function runSynth(){
+  const out=$('#sy_out'); out.innerHTML='<p class="loading">در حال طراحی مسیر سنتز…</p>';
+  try{
+    const res=await api('/api/synthesize',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({target:$('#sy_target').value,multistep:$('#sy_multi').checked,max_steps:4})});
+    if(!res.ok){ out.innerHTML=`<p class="err">${(res.errors||[]).join(' / ')}</p>`; return; }
+    let html=`<div class="summary">${res.summary_fa}</div>`;
+    if(res.drug_info){ html+=`<div class="hint">دارو: <b>${res.drug_info.name_fa||res.drug_info.name}</b> — ${res.drug_info.indication_fa||''} (${res.drug_info.drug_class_fa||''})</div>`; }
+    html+=`<h4>هدف</h4>`+molCard(res.target);
+    if(res.multistep){
+      if(res.steps.length){
+        html+=`<h4>نمودار مسیر سنتز</h4>`+flowDiagram(res.steps,res.starting_materials,res.target.formula);
+      }
+      html+=`<h4>جزئیات مراحل (${res.steps.length}) — از مواد اولیه تا دارو</h4>`;
+      res.steps.forEach((s,i)=>{
+        html+=`<div class="card" style="background:var(--panel2)">
+          <div><b>مرحله ${i+1}</b> <span class="tag ${s.forward_confirmed?'ok':'muted'}">${s.forward_confirmed?'✓ تأیید رو‌به‌جلو':'پیشنهادی'}</span></div>
+          <div style="font-size:15px;margin:6px 0"><b>${s.precursor_summary}</b> ⟶ <b>${s.product}</b></div>
+          <div class="kv">${s.explanation_fa}</div>
+          ${s.balanced_equation?`<div class="kv">معادله موازنه‌شده: <b>${s.balanced_equation}</b></div>`:''}
+          <div class="summary">شرایط: ${s.conditions_note_fa}</div>
+          ${(s.thermodynamics||s.kinetics)?thermoKinBlock(s.thermodynamics,s.kinetics):''}</div>`;
+      });
+    } else {
+      html+=`<h4>مسیرهای سنتز پیشنهادی (${res.routes.length})</h4>`;
+      res.routes.forEach((rt,i)=>{
+        html+=`<div class="card" style="background:var(--panel2)">
+          <div><b>مسیر ${i+1} — ${rt.disconnection}</b>
+            <span class="tag ${rt.forward_confirmed?'ok':'muted'}">${rt.forward_confirmed?'✓ تأیید رو‌به‌جلو':'پیشنهادی (تأیید نشده)'}</span></div>
+          <div class="kv">${rt.explanation_fa}</div>
+          <div class="kv">پیش‌سازها: <b>${rt.precursor_summary}</b></div>
+          ${rt.balanced_equation?`<div class="kv">معادله موازنه‌شده: <b>${rt.balanced_equation}</b></div>`:''}
+          <div class="summary">شرایط پیشنهادی: ${rt.conditions_note_fa}<br>
+            <span class="hint">${rt.conditions.description_fa}</span></div>
+          ${(rt.thermodynamics||rt.kinetics)?thermoKinBlock(rt.thermodynamics,rt.kinetics):''}`+
+          rt.precursors.map(p=>molCard(p)).join('')+`</div>`;
+      });
+    }
+    if(res.pharma){ html+=`<h4>پروفایل دارویی هدف</h4>`+pharmaBlock(res.target.formula,res.pharma); }
+    out.innerHTML=html;
+  }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
+}
+
+// ============ TAB: PHARMACY (drug catalogue) ============
+let DRUGS_CACHE=null;
+const CAT_FA={analgesic:'مسکن/ضدالتهاب',antibiotic:'آنتی‌بیوتیک',antiviral:'ضدویروس',
+  antidiabetic:'ضددیابت',cns:'سیستم عصبی/روان',cardio:'قلبی-عروقی',decongestant:'ضداحتقان',
+  respiratory:'تنفسی',git:'گوارش',vitamin:'ویتامین',antihistamine:'آنتی‌هیستامین',
+  antimalarial:'ضدمالاریا'};
+async function tabDrugs(){
+  $('#main').innerHTML=`
+  <div class="card"><h3>بررسی تداخل دارویی</h3>
+    <div class="row"><div><label>داروی اول</label><input id="ix_a" placeholder="aspirin"></div>
+      <div><label>داروی دوم</label><input id="ix_b" placeholder="warfarin"></div></div>
+    <button class="go" onclick="runIx()">بررسی تداخل</button><div id="ix_out"></div></div>
+  <div class="card"><h3>داروخانه — پایگاه داروها</h3>
+    <input id="dg_search" placeholder="جستجو در داروها…" oninput="renderDrugs()">
+    <div id="dg_list" class="loading" style="margin-top:12px">در حال بارگذاری…</div></div>`;
+  if(!DRUGS_CACHE){ DRUGS_CACHE=(await api('/api/drugs')).drugs; }
+  renderDrugs();
+}
+function renderDrugs(){
+  const q=($('#dg_search').value||'').trim().toLowerCase();
+  const groups={};
+  DRUGS_CACHE.filter(d=>!q||(d.name+d.name_fa+(d.indication_fa||'')).toLowerCase().includes(q))
+    .forEach(d=>{(groups[d.category]=groups[d.category]||[]).push(d);});
+  let html='';
+  for(const [cat,list] of Object.entries(groups)){
+    html+=`<h4>${CAT_FA[cat]||cat} <span class="tag muted">${list.length}</span></h4>`;
+    list.forEach(d=>{
+      html+=`<div class="mol"><div class="meta">
+        <b>${d.name_fa||d.name}</b> <span class="hint">${d.name}</span>
+        <div class="kv">کاربرد: ${d.indication_fa||'—'} · دسته: ${d.drug_class_fa||'—'}</div>
+        <div class="kv">SMILES: <code>${d.smiles}</code></div>
+        <div><span class="tag" style="cursor:pointer" onclick="goAnalyze('${d.name}')">تحلیل مولکول 🔍</span>
+        <span class="tag" style="cursor:pointer" onclick="goSynth('${d.name_fa||d.name}')">طراحی سنتز ⚗️</span></div>
+      </div></div>`;
+    });
+  }
+  $('#dg_list').innerHTML=html||'<p class="hint">داروی مطابقی یافت نشد.</p>';
+}
+async function runIx(){const o=$('#ix_out');o.innerHTML='…';try{const r=await api('/api/interaction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({drug_a:$('#ix_a').value,drug_b:$('#ix_b').value})});o.innerHTML=`<div class="summary"><span class="tag ${r.has_interaction?'bad':'ok'}">${r.has_interaction?'⚠️ تداخل':'بدون تداخل ثبت‌شده'}</span> ${r.drug_a} + ${r.drug_b}: ${r.interaction_fa}</div>`;}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+function goAnalyze(n){ go('molecule'); setTimeout(()=>{$('#mx_q').value=n;runMol();},50); }
+function goSynth(n){ go('synth'); setTimeout(()=>{$('#sy_target').value=n;runSynth();},50); }
+
+// ============ TAB: LAB TOOLS ============
+function tabLab(){
+  $('#main').innerHTML=`
+  <div class="card"><h3>محاسبه‌ی pH محلول</h3>
+    <div class="row"><div><label>ماده (اسید/باز)</label><input id="ph_c" placeholder="acetic acid"></div>
+      <div><label>غلظت (مولار)</label><input id="ph_conc" type="number" value="0.1"></div></div>
+    <button class="go" onclick="runPH()">محاسبه pH</button><div id="ph_out"></div></div>
+  <div class="card"><h3>انحلال‌پذیری</h3>
+    <input id="sol_q" placeholder="glucose یا benzene">
+    <button class="go" onclick="runSol()">بررسی</button><div id="sol_out"></div></div>
+  <div class="card"><h3>تقطیر و جداسازی مخلوط</h3>
+    <label>اجزای مخلوط (هر کدام یک خط)</label>
+    <textarea id="dist_c" placeholder="ethanol&#10;water&#10;acetone"></textarea>
+    <button class="go" onclick="runDist()">شبیه‌سازی تقطیر</button><div id="dist_out"></div></div>
+  <div class="card"><h3>حالات اکسایش اتم‌ها</h3>
+    <input id="ox_q" placeholder="O=C=O یا glucose">
+    <button class="go" onclick="runOx()">محاسبه</button><div id="ox_out"></div></div>
+  <div class="card"><h3>الکتروشیمی — سلول گالوانی</h3>
+    <div class="row"><div><label>کاتد (کاهش)</label><select id="cell_cat"></select></div>
+      <div><label>آند (اکسایش)</label><select id="cell_an"></select></div></div>
+    <button class="go" onclick="runCell()">محاسبه EMF</button><div id="cell_out"></div></div>
+  <div class="card"><h3>برق‌کافت (الکترولیز)</h3>
+    <input id="el_q" placeholder="NaCl، CuSO4، H2O، KI…">
+    <button class="go" onclick="runEl()">پیش‌بینی محصولات</button><div id="el_out"></div></div>`;
+  api('/api/half_reactions').then(d=>{
+    const opts=d.half_reactions.map(h=>`<option value="${h.id}">${h.id} (E°=${h.e}V)</option>`).join('');
+    $('#cell_cat').innerHTML=opts; $('#cell_an').innerHTML=opts;
+    $('#cell_cat').value='Cu2+/Cu'; $('#cell_an').value='Zn2+/Zn';
+  });
+}
+async function runPH(){const o=$('#ph_out');o.innerHTML='…';try{const r=await api('/api/ph',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({compound:$('#ph_c').value,concentration_m:parseFloat($('#ph_conc').value)})});o.innerHTML=r.ok?`<div class="summary">${r.summary_fa}</div><div class="bar"><span style="width:${r.ph/14*100}%"></span></div>`:`<p class="err">${r.error_fa}</p>`;}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+async function runSol(){const o=$('#sol_out');o.innerHTML='…';try{const r=await api('/api/solubility/'+encodeURIComponent($('#sol_q').value));o.innerHTML=`<div class="summary">${r.verdict_fa}</div><div class="kv">LogP=${r.logp} · TPSA=${r.tpsa} · ماهیت: ${r.like_dissolves_like_fa}</div>`;}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+async function runDist(){const o=$('#dist_out');o.innerHTML='…';try{const comps=$('#dist_c').value.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);const r=await api('/api/distill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({components:comps})});if(!r.ok){o.innerHTML=`<p class="err">${r.error_fa}</p>`;return;}let h=`<div class="summary">${r.summary_fa}</div><table><tr><th>جزء</th><th>نقطه جوش °C</th><th>تخمینی؟</th></tr>`;r.fractions.forEach(f=>{h+=`<tr><td>${f.formula}</td><td>${f.bp_c}</td><td>${f.estimated?'بله':'خیر'}</td></tr>`;});o.innerHTML=h+'</table>'+r.notes_fa.map(n=>`<div class="hint">${n}</div>`).join('');}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+async function runOx(){const o=$('#ox_out');o.innerHTML='…';try{const r=await api('/api/oxidation/'+encodeURIComponent($('#ox_q').value));let h='<div class="thermo">';for(const[el,st] of Object.entries(r.by_element)){h+=`<span class="pill">${el}: ${st.join(', ')}</span>`;}o.innerHTML=h+'</div>';}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+async function runCell(){const o=$('#cell_out');o.innerHTML='…';try{const r=await api('/api/cell',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cathode:$('#cell_cat').value,anode:$('#cell_an').value})});o.innerHTML=r.ok?`<div class="summary">${r.summary_fa}</div>`:`<p class="err">${r.error_fa}</p>`;}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+async function runEl(){const o=$('#el_out');o.innerHTML='…';try{const r=await api('/api/electrolysis/'+encodeURIComponent($('#el_q').value));o.innerHTML=r.ok?`<div class="summary">${r.summary_fa}</div>`:`<p class="err">${r.error_fa} (موجود: ${(r.available||[]).join('، ')})</p>`;}catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}}
+
+// ============ TAB: SPECTRA ============
+function tabSpectra(){
+  $('#main').innerHTML=`<div class="card"><h3>طیف‌سنجی پیش‌بینی‌شده (IR / ¹H NMR / MS)</h3>
+    <input id="sp_q" placeholder="aspirin یا CC(=O)Oc1ccccc1C(=O)O">
+    <div class="examples">نمونه:
+      <span onclick="$('#sp_q').value='aspirin';runSpectra()">آسپرین</span>
+      <span onclick="$('#sp_q').value='ethanol';runSpectra()">اتانول</span>
+      <span onclick="$('#sp_q').value='acetone';runSpectra()">استون</span></div>
+    <button class="go" onclick="runSpectra()">پیش‌بینی طیف 📈</button><div id="sp_out"></div></div>`;
+}
+async function runSpectra(){
+  const o=$('#sp_out');o.innerHTML='<p class="loading">…</p>';
+  try{
+    const d=await api('/api/spectra/'+encodeURIComponent($('#sp_q').value));
+    let h=`<h4>طیف مادون‌قرمز (IR)</h4><table><tr><th>عدد موجی (cm⁻¹)</th><th>انتساب</th></tr>`;
+    d.ir.bands.forEach(b=>{h+=`<tr><td>${b.wavenumber_cm}</td><td>${b.assignment_fa}</td></tr>`;});
+    h+='</table>';
+    h+=`<h4>¹H NMR — ${d.nmr_h.num_signals} سیگنال</h4><table><tr><th>شیفت (ppm)</th><th>انتگرال (H)</th><th>انتساب</th></tr>`;
+    d.nmr_h.signals.forEach(s=>{h+=`<tr><td>${s.shift_ppm}</td><td>${s.integration_h}</td><td>${s.assignment_fa}</td></tr>`;});
+    h+='</table>';
+    h+=`<h4>طیف جرمی (MS)</h4><div class="summary">${d.ms.summary_fa}</div><table><tr><th>قله</th><th>m/z</th><th>توضیح</th></tr>`;
+    d.ms.peaks.forEach(p=>{h+=`<tr><td>${p.label}</td><td>${p.mz}</td><td>${p.note_fa}</td></tr>`;});
+    o.innerHTML=h+'</table>';
+  }catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}
+}
+
+// ============ TAB: WORKBENCH (v2) ============
+async function tabWorkbench(){
+  $('#main').innerHTML=`<div class="card">
+    <h3>میز کار کشف دارو — جریان یکپارچه</h3>
+    <p class="hint">هدف را بنویسید؛ سیستم در یک جریان: هدف زیستی ← QSAR ← تولید مولکول ← ADMET ← (داکینگ) ← رتبه‌بندی ← <b>مسیر سنتز هر کاندید</b> را اجرا می‌کند.</p>
+    <label>هدف (به زبان طبیعی) یا انتخاب هدف زیستی</label>
+    <input id="wb_goal" placeholder="مثلاً: می‌خواهم مهارکننده COX2 پیدا کنم">
+    <div class="row">
+      <div><label>هدف زیستی</label><select id="wb_target"><option value="">— از روی متن —</option></select></div>
+      <div><label>جمعیت</label><input id="wb_pop" type="number" value="30"></div>
+      <div><label>نسل‌ها</label><input id="wb_gen" type="number" value="6"></div>
+      <div><label>کاندیدها</label><input id="wb_k" type="number" value="6"></div>
+    </div>
+    <div class="chk"><input id="wb_dock" type="checkbox"><label style="margin:0">داکینگ Vina (کندتر)</label></div>
+    <button class="go" onclick="runWorkbench()">اجرای جریان کشف دارو 🔬🧬</button>
+    <p class="hint">⏳ چند ده‌ثانیه طول می‌کشد.</p>
+    <div id="wb_out"></div>
+  </div>`;
+  try{const d=await api('/api/targets');
+    $('#wb_target').innerHTML='<option value="">— از روی متن —</option>'+
+      d.targets.map(t=>`<option value="${t.key}">${t.name_fa} — ${t.disease_fa}</option>`).join('');
+  }catch(e){}
+}
+async function runWorkbench(){
+  const out=$('#wb_out'); out.innerHTML='<p class="loading">در حال اجرای جریان کامل کشف دارو…</p>';
+  try{
+    const res=await api('/api/workbench',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({goal:$('#wb_goal').value||null,target_key:$('#wb_target').value||null,
+        population_size:parseInt($('#wb_pop').value),generations:parseInt($('#wb_gen').value),
+        top_k:parseInt($('#wb_k').value),use_docking:$('#wb_dock').checked})});
+    if(!res.ok){ out.innerHTML=`<p class="err">${res.error_fa||'خطا'}</p>`; return; }
+    let html=`<div class="summary">${res.summary_fa}</div>`;
+    if(res.target){ html+=`<div class="hint">هدف: <b>${res.target.name_fa}</b> · ChEMBL: ${res.target.chembl_id} · ${res.target.disease_fa}</div>`; }
+    html+=`<div class="flow"><div class="reagents">`+res.pipeline_stages_fa.map(s=>`<div class="node">${s}</div>`).join('')+`</div></div>`;
+    html+=`<div class="hint">مدل: ${res.qsar_model.name} · ${Object.entries(res.qsar_model.metrics).map(([k,v])=>k+'='+v).join(' · ')}</div>`;
+    if(res.model_note&&res.model_note.warning_fa){ html+=`<div class="summary" style="border-color:#caa">${res.model_note.warning_fa}</div>`; }
+    res.candidates.forEach(c=>{
+      const rs=c.retrosynthesis||{n_steps:0,steps:[],starting_materials:[]};
+      html+=`<div class="mol" style="align-items:flex-start">
+        <div><img src="${API}/api/molecule_svg/${encodeURIComponent(c.smiles)}" width="190" height="150" style="background:#fff;border-radius:8px"></div>
+        <div class="meta">
+          <div style="font-size:16px"><b>کاندید #${c.rank}</b> — ${c.formula} <span class="tag ok">امتیاز ${c.composite_score}</span></div>
+          <div class="kv">SMILES: <code>${c.smiles}</code></div>
+          <div class="thermo">
+            <span class="pill">فعالیت: ${c.activity_score}</span>
+            <span class="pill">ADMET: ${c.admet_score}</span>
+            <span class="pill">سنتزپذیری: ${c.synthesizability_score}</span>
+            <span class="pill">QED: ${c.qed}</span>
+            ${c.docking_score!==undefined?`<span class="pill">داکینگ: ${c.binding_affinity_kcal_mol} kcal/mol</span>`:''}
+          </div>
+          <div style="margin-top:8px"><b>مسیر سنتز (مرحله ۷):</b> <span class="hint">${rs.summary_fa||''}</span></div>
+          ${rs.n_steps?`<div class="flow" style="margin:8px 0">
+            <div class="reagents">${rs.starting_materials.map(m=>`<div class="node start">${m}</div>`).join('<span class="plus">+</span>')}</div>
+            ${rs.steps.map(s=>`<div class="arrow"><div class="cond">${s.disconnection}${s.forward_confirmed?' ✓':''}</div><div class="line">↓</div></div><div class="node">${s.product}</div>`).join('')}
+          </div>`:''}
+        </div></div>`;
+    });
+    out.innerHTML=html;
+  }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
+}
+
+// ============ TAB: DRUG DISCOVERY ============
+async function tabDiscover(){
+  $('#main').innerHTML=`<div class="card">
+    <h3>کشف دارو — حلقه‌ی یادگیری‌ماشینی</h3>
+    <p class="hint">سیستم مولکول‌های نو تولید می‌کند (الگوریتم ژنتیک)، فعالیت را با مدل QSAR واقعی پیش‌بینی می‌کند، ADMET و سنتزپذیری را می‌سنجد و کاندیدها را رتبه‌بندی می‌کند.</p>
+    <div id="qsar_info" class="hint">در حال بارگذاری مدل…</div>
+    <div class="row">
+      <div><label>هدف بهینه‌سازی</label><select id="dc_obj">
+        <option value="activity">فعالیت (مدل QSAR) + دارویی‌بودن</option>
+        <option value="qed">دارویی‌بودن (QED) + سنتزپذیری</option></select></div>
+      <div><label>اندازه جمعیت</label><input id="dc_pop" type="number" value="30"></div>
+      <div><label>نسل‌ها</label><input id="dc_gen" type="number" value="6"></div>
+      <div><label>تعداد کاندید</label><input id="dc_k" type="number" value="8"></div>
+    </div>
+    <div class="chk"><input id="dc_dock" type="checkbox"><label style="margin:0">محاسبه‌ی داکینگ با AutoDock Vina (گیرنده‌ی نمونه) — کندتر</label></div>
+    <button class="go" onclick="runDiscover()">تولید و رتبه‌بندی کاندیدها 🧬</button>
+    <p class="hint">⏳ تولید مولکول و ارزیابی چند ده‌ثانیه طول می‌کشد.</p>
+    <div id="dc_out"></div>
+  </div>`;
+  try{const m=await api('/api/qsar_model');
+    $('#qsar_info').innerHTML=`مدل فعال: <b>${m.name}</b> · ${m.task} · ${m.n_train} نمونه · `+
+      Object.entries(m.metrics).map(([k,v])=>`${k}=${v}`).join(' · ');
+  }catch(e){}
+}
+async function runDiscover(){
+  const out=$('#dc_out'); out.innerHTML='<p class="loading">در حال تولید و ارزیابی مولکول‌های نو… (چند ده‌ثانیه)</p>';
+  try{
+    const res=await api('/api/discover',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({objective:$('#dc_obj').value,population_size:parseInt($('#dc_pop').value),
+        generations:parseInt($('#dc_gen').value),top_k:parseInt($('#dc_k').value),use_docking:$('#dc_dock').checked})});
+    if(!res.ok){ out.innerHTML=`<p class="err">${res.error_fa||'خطا'}</p>`; return; }
+    let html=`<div class="summary">${res.summary_fa}</div>
+      <div class="hint">مدل: ${res.model.name} · ${Object.entries(res.model.metrics).map(([k,v])=>k+'='+v).join(' · ')} · هدف: ${res.objective}</div>`;
+    res.candidates.forEach(c=>{
+      html+=`<div class="mol">
+        <div><img src="${API}/api/molecule_svg/${encodeURIComponent(c.smiles)}" width="200" height="150" style="background:#fff;border-radius:8px"></div>
+        <div class="meta">
+          <div style="font-size:16px"><b>کاندید #${c.rank}</b> — ${c.formula}
+            <span class="tag ok">امتیاز ترکیبی: ${c.composite_score}</span></div>
+          <div class="kv">SMILES: <code>${c.smiles}</code></div>
+          <div class="scorebar">فعالیت: ${c.activity_score}<div class="bar"><span style="width:${c.activity_score}%"></span></div></div>
+          <div class="scorebar">ADMET: ${c.admet_score}<div class="bar"><span style="width:${c.admet_score}%"></span></div></div>
+          <div class="scorebar">سنتزپذیری: ${c.synthesizability_score}<div class="bar"><span style="width:${c.synthesizability_score}%"></span></div></div>
+          ${c.docking_score!==undefined?`<div class="scorebar">داکینگ: ${c.docking_score} (${c.binding_affinity_kcal_mol} kcal/mol)<div class="bar"><span style="width:${c.docking_score}%"></span></div></div>`:''}
+          <div class="thermo"><span class="pill">QED: ${c.qed}</span><span class="pill">SA: ${c.sa_raw}</span>
+            <span class="pill">${c.admet.absorption_fa}</span></div>
+        </div></div>`;
+    });
+    out.innerHTML=html;
+  }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
+}
+
+// ---------- tab wiring ----------
+const TABS=[['workbench','🔬 میز کار کشف دارو',tabWorkbench],
+  ['react','واکنش / سناریو',tabReact],['reverse','مهندسی معکوس',tabReverse],
+  ['synth','سنتز دارو',tabSynth],['discover','کشف دارو',tabDiscover],['hypo','فرضیه‌سازی',tabHypo],
+  ['molecule','کاوشگر مولکول',tabMolecule],['lab','آزمایشگاه',tabLab],
+  ['spectra','طیف‌سنجی',tabSpectra],['drugs','داروخانه',tabDrugs],
+  ['periodic','جدول تناوبی',tabPeriodic]];
+function renderTabs(active){
+  $('#tabs').innerHTML=TABS.map(([id,label])=>`<div class="tab ${id===active?'active':''}" onclick="go('${id}')">${label}</div>`).join('');
+}
+function go(id){ renderTabs(id); TABS.find(t=>t[0]===id)[2](); }
+go('workbench');
+</script>
+</body>
+</html>

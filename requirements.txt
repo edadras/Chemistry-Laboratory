@@ -1,0 +1,10 @@
+rdkit>=2024.3
+numpy
+scikit-learn
+joblib
+vina        # docking (Phase 4) — optional; falls back to estimate if absent
+meeko       # ligand PDBQT preparation for Vina
+gemmi       # required by meeko
+fastapi
+uvicorn[standard]
+pydantic>=2
