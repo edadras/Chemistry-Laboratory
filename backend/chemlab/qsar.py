@@ -19,7 +19,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from rdkit import Chem
-from rdkit.Chem import rdFingerprintGenerator
+from rdkit.Chem import rdFingerprintGenerator, Descriptors, Crippen, Lipinski, rdMolDescriptors
 from rdkit import DataStructs
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import cross_val_predict, cross_val_score
@@ -34,15 +34,35 @@ FP_BITS = 1024
 FP_RADIUS = 2
 _FPGEN = rdFingerprintGenerator.GetMorganGenerator(radius=FP_RADIUS, fpSize=FP_BITS)
 
+# Physicochemical descriptor block appended to the fingerprint (Step 2:
+# a richer feature generator than fingerprints alone).
+_DESCRIPTORS = [
+    ("MolWt", Descriptors.MolWt), ("LogP", Crippen.MolLogP),
+    ("TPSA", rdMolDescriptors.CalcTPSA), ("HBD", Lipinski.NumHDonors),
+    ("HBA", Lipinski.NumHAcceptors), ("RotBonds", Lipinski.NumRotatableBonds),
+    ("Rings", rdMolDescriptors.CalcNumRings),
+    ("AromRings", rdMolDescriptors.CalcNumAromaticRings),
+    ("FracCSP3", rdMolDescriptors.CalcFractionCSP3),
+    ("HeavyAtoms", lambda m: m.GetNumHeavyAtoms()),
+    ("FormalCharge", Chem.GetFormalCharge),
+]
+DESCRIPTOR_NAMES = [n for n, _ in _DESCRIPTORS]
+N_FEATURES = FP_BITS + len(_DESCRIPTORS)
+
+
+def descriptor_vector(mol: Chem.Mol) -> np.ndarray:
+    return np.array([float(fn(mol)) for _, fn in _DESCRIPTORS], dtype=np.float32)
+
 
 def featurize(smiles: str) -> np.ndarray | None:
+    """Feature vector = Morgan fingerprint (1024 bits) + physicochemical block."""
     mol = Chem.MolFromSmiles(smiles)
     if mol is None:
         return None
     fp = _FPGEN.GetFingerprint(mol)
-    arr = np.zeros((FP_BITS,), dtype=np.int8)
-    DataStructs.ConvertToNumpyArray(fp, arr)
-    return arr
+    bits = np.zeros((FP_BITS,), dtype=np.float32)
+    DataStructs.ConvertToNumpyArray(fp, bits)
+    return np.concatenate([bits, descriptor_vector(mol)])
 
 
 @dataclass

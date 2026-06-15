@@ -602,6 +602,67 @@ async function runSpectra(){
   }catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}
 }
 
+// ============ TAB: WORKBENCH (v2) ============
+async function tabWorkbench(){
+  $('#main').innerHTML=`<div class="card">
+    <h3>میز کار کشف دارو — جریان یکپارچه</h3>
+    <p class="hint">هدف را بنویسید؛ سیستم در یک جریان: هدف زیستی ← QSAR ← تولید مولکول ← ADMET ← (داکینگ) ← رتبه‌بندی ← <b>مسیر سنتز هر کاندید</b> را اجرا می‌کند.</p>
+    <label>هدف (به زبان طبیعی) یا انتخاب هدف زیستی</label>
+    <input id="wb_goal" placeholder="مثلاً: می‌خواهم مهارکننده COX2 پیدا کنم">
+    <div class="row">
+      <div><label>هدف زیستی</label><select id="wb_target"><option value="">— از روی متن —</option></select></div>
+      <div><label>جمعیت</label><input id="wb_pop" type="number" value="30"></div>
+      <div><label>نسل‌ها</label><input id="wb_gen" type="number" value="6"></div>
+      <div><label>کاندیدها</label><input id="wb_k" type="number" value="6"></div>
+    </div>
+    <div class="chk"><input id="wb_dock" type="checkbox"><label style="margin:0">داکینگ Vina (کندتر)</label></div>
+    <button class="go" onclick="runWorkbench()">اجرای جریان کشف دارو 🔬🧬</button>
+    <p class="hint">⏳ چند ده‌ثانیه طول می‌کشد.</p>
+    <div id="wb_out"></div>
+  </div>`;
+  try{const d=await api('/api/targets');
+    $('#wb_target').innerHTML='<option value="">— از روی متن —</option>'+
+      d.targets.map(t=>`<option value="${t.key}">${t.name_fa} — ${t.disease_fa}</option>`).join('');
+  }catch(e){}
+}
+async function runWorkbench(){
+  const out=$('#wb_out'); out.innerHTML='<p class="loading">در حال اجرای جریان کامل کشف دارو…</p>';
+  try{
+    const res=await api('/api/workbench',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({goal:$('#wb_goal').value||null,target_key:$('#wb_target').value||null,
+        population_size:parseInt($('#wb_pop').value),generations:parseInt($('#wb_gen').value),
+        top_k:parseInt($('#wb_k').value),use_docking:$('#wb_dock').checked})});
+    if(!res.ok){ out.innerHTML=`<p class="err">${res.error_fa||'خطا'}</p>`; return; }
+    let html=`<div class="summary">${res.summary_fa}</div>`;
+    if(res.target){ html+=`<div class="hint">هدف: <b>${res.target.name_fa}</b> · ChEMBL: ${res.target.chembl_id} · ${res.target.disease_fa}</div>`; }
+    html+=`<div class="flow"><div class="reagents">`+res.pipeline_stages_fa.map(s=>`<div class="node">${s}</div>`).join('')+`</div></div>`;
+    html+=`<div class="hint">مدل: ${res.qsar_model.name} · ${Object.entries(res.qsar_model.metrics).map(([k,v])=>k+'='+v).join(' · ')}</div>`;
+    if(res.model_note&&res.model_note.warning_fa){ html+=`<div class="summary" style="border-color:#caa">${res.model_note.warning_fa}</div>`; }
+    res.candidates.forEach(c=>{
+      const rs=c.retrosynthesis||{n_steps:0,steps:[],starting_materials:[]};
+      html+=`<div class="mol" style="align-items:flex-start">
+        <div><img src="${API}/api/molecule_svg/${encodeURIComponent(c.smiles)}" width="190" height="150" style="background:#fff;border-radius:8px"></div>
+        <div class="meta">
+          <div style="font-size:16px"><b>کاندید #${c.rank}</b> — ${c.formula} <span class="tag ok">امتیاز ${c.composite_score}</span></div>
+          <div class="kv">SMILES: <code>${c.smiles}</code></div>
+          <div class="thermo">
+            <span class="pill">فعالیت: ${c.activity_score}</span>
+            <span class="pill">ADMET: ${c.admet_score}</span>
+            <span class="pill">سنتزپذیری: ${c.synthesizability_score}</span>
+            <span class="pill">QED: ${c.qed}</span>
+            ${c.docking_score!==undefined?`<span class="pill">داکینگ: ${c.binding_affinity_kcal_mol} kcal/mol</span>`:''}
+          </div>
+          <div style="margin-top:8px"><b>مسیر سنتز (مرحله ۷):</b> <span class="hint">${rs.summary_fa||''}</span></div>
+          ${rs.n_steps?`<div class="flow" style="margin:8px 0">
+            <div class="reagents">${rs.starting_materials.map(m=>`<div class="node start">${m}</div>`).join('<span class="plus">+</span>')}</div>
+            ${rs.steps.map(s=>`<div class="arrow"><div class="cond">${s.disconnection}${s.forward_confirmed?' ✓':''}</div><div class="line">↓</div></div><div class="node">${s.product}</div>`).join('')}
+          </div>`:''}
+        </div></div>`;
+    });
+    out.innerHTML=html;
+  }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
+}
+
 // ============ TAB: DRUG DISCOVERY ============
 async function tabDiscover(){
   $('#main').innerHTML=`<div class="card">
@@ -655,7 +716,8 @@ async function runDiscover(){
 }
 
 // ---------- tab wiring ----------
-const TABS=[['react','واکنش / سناریو',tabReact],['reverse','مهندسی معکوس',tabReverse],
+const TABS=[['workbench','🔬 میز کار کشف دارو',tabWorkbench],
+  ['react','واکنش / سناریو',tabReact],['reverse','مهندسی معکوس',tabReverse],
   ['synth','سنتز دارو',tabSynth],['discover','کشف دارو',tabDiscover],['hypo','فرضیه‌سازی',tabHypo],
   ['molecule','کاوشگر مولکول',tabMolecule],['lab','آزمایشگاه',tabLab],
   ['spectra','طیف‌سنجی',tabSpectra],['drugs','داروخانه',tabDrugs],
@@ -664,7 +726,7 @@ function renderTabs(active){
   $('#tabs').innerHTML=TABS.map(([id,label])=>`<div class="tab ${id===active?'active':''}" onclick="go('${id}')">${label}</div>`).join('');
 }
 function go(id){ renderTabs(id); TABS.find(t=>t[0]===id)[2](); }
-go('react');
+go('workbench');
 </script>
 </body>
 </html>

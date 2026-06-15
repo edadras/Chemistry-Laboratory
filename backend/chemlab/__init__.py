@@ -11,6 +11,13 @@ Public surface:
     DrugProfile                     — pharmaceutical analysis
     ScenarioProcessor               — high-level orchestration for the API
 """
+from rdkit import RDLogger as _RDLogger
+
+# RDKit's C++ layer is chatty (reaction atom-mapping notes, transient
+# sanitization errors we already handle via try/except). Silence it so server
+# and CLI output stays readable; failures still surface through Python.
+_RDLogger.DisableLog("rdApp.*")
+
 from .elements import PeriodicTable, periodic_table, Element
 from .molecule import Molecule, MoleculeError
 from .conditions import Conditions, Technique
@@ -33,6 +40,8 @@ from .qsar import QSARModel, demo_model, featurize
 from .generator import evolve, mutate, crossover
 from .discovery import discover, candidate_profile, synth_accessibility
 from .docking import dock
+from .targets import list_targets, resolve_target
+from . import workbench
 from . import external_db
 
 __version__ = "0.1.0"
@@ -57,5 +66,5 @@ __all__ = [
     "QSARModel", "demo_model", "featurize",
     "evolve", "mutate", "crossover",
     "discover", "candidate_profile", "synth_accessibility",
-    "dock", "external_db",
+    "dock", "list_targets", "resolve_target", "workbench", "external_db",
 ]

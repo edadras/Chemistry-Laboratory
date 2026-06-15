@@ -28,6 +28,10 @@ try:
 except Exception:
     _HAS_VINA = False
 
+# Importing vina/meeko re-enables RDKit's C++ logging; silence it again.
+from rdkit import RDLogger
+RDLogger.DisableLog("rdApp.*")
+
 
 def _embed3d(smiles: str) -> Chem.Mol | None:
     mol = Chem.MolFromSmiles(smiles)

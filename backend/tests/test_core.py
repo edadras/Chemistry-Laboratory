@@ -317,6 +317,33 @@ def test_discovery_with_docking():
     assert all("docking_score" in c for c in res["candidates"])
 
 
+def test_targets_resolve_from_text():
+    from chemlab.targets import resolve_target
+    t = resolve_target("می‌خواهم مهارکننده COX2 پیدا کنم")
+    assert t and t["key"] == "COX2" and t["chembl_id"] == "CHEMBL230"
+    assert resolve_target("EGFR inhibitor")["key"] == "EGFR"
+
+
+def test_workbench_end_to_end():
+    from chemlab import workbench
+    res = workbench.run(goal="مهارکننده COX2", population_size=16,
+                        generations=2, top_k=3)
+    assert res["ok"]
+    assert res["target"]["key"] == "COX2"
+    assert len(res["candidates"]) >= 1
+    # the differentiator: every candidate carries a retrosynthesis plan (Step 7)
+    for c in res["candidates"]:
+        assert "retrosynthesis" in c
+        assert "activity_score" in c and "admet_score" in c
+    assert len(res["pipeline_stages_fa"]) == 6
+
+
+def test_enhanced_features_dimension():
+    from chemlab.qsar import featurize, N_FEATURES
+    vec = featurize("CCO")
+    assert vec is not None and len(vec) == N_FEATURES == 1035
+
+
 def test_external_db_graceful_when_blocked():
     from chemlab.external_db import pubchem_by_name
     res = pubchem_by_name("aspirin")

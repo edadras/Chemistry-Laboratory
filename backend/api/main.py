@@ -28,7 +28,8 @@ from chemlab.known_compounds import all_drugs
 from chemlab.qsar import demo_model
 from chemlab.discovery import discover
 from chemlab.docking import dock as run_dock
-from chemlab import external_db
+from chemlab import external_db, workbench
+from chemlab.targets import list_targets
 
 
 def _parse_or_404(query: str) -> Molecule:
@@ -127,6 +128,15 @@ class QSARPredictRequest(BaseModel):
 class DockRequest(BaseModel):
     smiles: str
     exhaustiveness: int = 4
+
+
+class WorkbenchRequest(BaseModel):
+    goal: Optional[str] = None
+    target_key: Optional[str] = None
+    population_size: int = 40
+    generations: int = 8
+    top_k: int = 8
+    use_docking: bool = False
 
 
 class HypothesisRequest(BaseModel):
@@ -308,6 +318,19 @@ def discover_ep(req: DiscoverRequest) -> dict:
 @app.post("/api/dock")
 def dock_ep(req: DockRequest) -> dict:
     return run_dock(req.smiles, exhaustiveness=min(req.exhaustiveness, 8))
+
+
+@app.get("/api/targets")
+def targets_ep() -> dict:
+    return {"targets": list_targets()}
+
+
+@app.post("/api/workbench")
+def workbench_ep(req: WorkbenchRequest) -> dict:
+    return workbench.run(goal=req.goal, target_key=req.target_key,
+                         population_size=min(req.population_size, 60),
+                         generations=min(req.generations, 12),
+                         top_k=req.top_k, use_docking=req.use_docking)
 
 
 @app.get("/api/pubchem/{name:path}")
