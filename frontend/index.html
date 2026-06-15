@@ -602,9 +602,59 @@ async function runSpectra(){
   }catch(e){o.innerHTML=`<p class="err">${e.message}</p>`;}
 }
 
+// ============ TAB: DRUG DISCOVERY ============
+async function tabDiscover(){
+  $('#main').innerHTML=`<div class="card">
+    <h3>کشف دارو — حلقه‌ی یادگیری‌ماشینی</h3>
+    <p class="hint">سیستم مولکول‌های نو تولید می‌کند (الگوریتم ژنتیک)، فعالیت را با مدل QSAR واقعی پیش‌بینی می‌کند، ADMET و سنتزپذیری را می‌سنجد و کاندیدها را رتبه‌بندی می‌کند.</p>
+    <div id="qsar_info" class="hint">در حال بارگذاری مدل…</div>
+    <div class="row">
+      <div><label>هدف بهینه‌سازی</label><select id="dc_obj">
+        <option value="activity">فعالیت (مدل QSAR) + دارویی‌بودن</option>
+        <option value="qed">دارویی‌بودن (QED) + سنتزپذیری</option></select></div>
+      <div><label>اندازه جمعیت</label><input id="dc_pop" type="number" value="30"></div>
+      <div><label>نسل‌ها</label><input id="dc_gen" type="number" value="6"></div>
+      <div><label>تعداد کاندید</label><input id="dc_k" type="number" value="8"></div>
+    </div>
+    <button class="go" onclick="runDiscover()">تولید و رتبه‌بندی کاندیدها 🧬</button>
+    <p class="hint">⏳ تولید مولکول و ارزیابی چند ده‌ثانیه طول می‌کشد.</p>
+    <div id="dc_out"></div>
+  </div>`;
+  try{const m=await api('/api/qsar_model');
+    $('#qsar_info').innerHTML=`مدل فعال: <b>${m.name}</b> · ${m.task} · ${m.n_train} نمونه · `+
+      Object.entries(m.metrics).map(([k,v])=>`${k}=${v}`).join(' · ');
+  }catch(e){}
+}
+async function runDiscover(){
+  const out=$('#dc_out'); out.innerHTML='<p class="loading">در حال تولید و ارزیابی مولکول‌های نو… (چند ده‌ثانیه)</p>';
+  try{
+    const res=await api('/api/discover',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({objective:$('#dc_obj').value,population_size:parseInt($('#dc_pop').value),
+        generations:parseInt($('#dc_gen').value),top_k:parseInt($('#dc_k').value)})});
+    if(!res.ok){ out.innerHTML=`<p class="err">${res.error_fa||'خطا'}</p>`; return; }
+    let html=`<div class="summary">${res.summary_fa}</div>
+      <div class="hint">مدل: ${res.model.name} · ${Object.entries(res.model.metrics).map(([k,v])=>k+'='+v).join(' · ')} · هدف: ${res.objective}</div>`;
+    res.candidates.forEach(c=>{
+      html+=`<div class="mol">
+        <div><img src="${API}/api/molecule_svg/${encodeURIComponent(c.smiles)}" width="200" height="150" style="background:#fff;border-radius:8px"></div>
+        <div class="meta">
+          <div style="font-size:16px"><b>کاندید #${c.rank}</b> — ${c.formula}
+            <span class="tag ok">امتیاز ترکیبی: ${c.composite_score}</span></div>
+          <div class="kv">SMILES: <code>${c.smiles}</code></div>
+          <div class="scorebar">فعالیت: ${c.activity_score}<div class="bar"><span style="width:${c.activity_score}%"></span></div></div>
+          <div class="scorebar">ADMET: ${c.admet_score}<div class="bar"><span style="width:${c.admet_score}%"></span></div></div>
+          <div class="scorebar">سنتزپذیری: ${c.synthesizability_score}<div class="bar"><span style="width:${c.synthesizability_score}%"></span></div></div>
+          <div class="thermo"><span class="pill">QED: ${c.qed}</span><span class="pill">SA: ${c.sa_raw}</span>
+            <span class="pill">${c.admet.absorption_fa}</span></div>
+        </div></div>`;
+    });
+    out.innerHTML=html;
+  }catch(e){ out.innerHTML=`<p class="err">${e.message}</p>`; }
+}
+
 // ---------- tab wiring ----------
 const TABS=[['react','واکنش / سناریو',tabReact],['reverse','مهندسی معکوس',tabReverse],
-  ['synth','سنتز دارو',tabSynth],['hypo','فرضیه‌سازی',tabHypo],
+  ['synth','سنتز دارو',tabSynth],['discover','کشف دارو',tabDiscover],['hypo','فرضیه‌سازی',tabHypo],
   ['molecule','کاوشگر مولکول',tabMolecule],['lab','آزمایشگاه',tabLab],
   ['spectra','طیف‌سنجی',tabSpectra],['drugs','داروخانه',tabDrugs],
   ['periodic','جدول تناوبی',tabPeriodic]];

@@ -25,6 +25,9 @@ from chemlab import (
 from chemlab.conditions import Conditions, TECHNIQUE_FA, Technique
 from chemlab.scenario import _reverse_lookup
 from chemlab.known_compounds import all_drugs
+from chemlab.qsar import demo_model
+from chemlab.discovery import discover
+from chemlab import external_db
 
 
 def _parse_or_404(query: str) -> Molecule:
@@ -105,6 +108,18 @@ class CellRequest(BaseModel):
 class InteractionRequest(BaseModel):
     drug_a: str
     drug_b: str
+
+
+class DiscoverRequest(BaseModel):
+    objective: str = "activity"           # "activity" or "qed"
+    seeds: Optional[list[str]] = None
+    population_size: int = 30
+    generations: int = 6
+    top_k: int = 10
+
+
+class QSARPredictRequest(BaseModel):
+    smiles: str
 
 
 class HypothesisRequest(BaseModel):
@@ -262,6 +277,34 @@ def interaction_ep(req: InteractionRequest) -> dict:
 @app.get("/api/spectra/{query:path}")
 def spectra_ep(query: str) -> dict:
     return full_spectra(_parse_or_404(query))
+
+
+# ----- drug discovery (ML closed loop) ----------------------------------
+@app.get("/api/qsar_model")
+def qsar_model() -> dict:
+    return demo_model().to_dict()
+
+
+@app.post("/api/qsar_predict")
+def qsar_predict(req: QSARPredictRequest) -> dict:
+    return demo_model().predict(req.smiles)
+
+
+@app.post("/api/discover")
+def discover_ep(req: DiscoverRequest) -> dict:
+    return discover(objective=req.objective, seeds=req.seeds,
+                    population_size=min(req.population_size, 60),
+                    generations=min(req.generations, 12), top_k=req.top_k)
+
+
+@app.get("/api/pubchem/{name:path}")
+def pubchem_ep(name: str) -> dict:
+    return external_db.pubchem_by_name(name)
+
+
+@app.get("/api/chembl/{chembl_id}")
+def chembl_ep(chembl_id: str) -> dict:
+    return external_db.chembl_molecule(chembl_id)
 
 
 # ----------------------------- static UI --------------------------------

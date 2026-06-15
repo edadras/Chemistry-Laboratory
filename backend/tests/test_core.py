@@ -265,6 +265,51 @@ def test_expanded_reaction_count():
     assert len(REACTION_RULES) >= 15
 
 
+def test_qsar_model_trains_and_predicts():
+    from chemlab.qsar import demo_model
+    m = demo_model()
+    assert m.n_train >= 40
+    assert m.metrics.get("cv_auc", 0) > 0.6  # real learned signal
+    # caffeine (BBB+) should score higher than glucose (BBB-)
+    caf = m.predict("Cn1cnc2c1c(=O)n(C)c(=O)n2C")["probability_active"]
+    glu = m.predict("OC[C@@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O")["probability_active"]
+    assert caf > glu
+
+
+def test_generator_makes_novel_valid_molecules():
+    from chemlab.generator import mutate
+    from rdkit import Chem
+    seen = set()
+    for _ in range(20):
+        child = mutate("c1ccccc1")
+        if child:
+            assert Chem.MolFromSmiles(child) is not None
+            seen.add(child)
+    assert len(seen) >= 3  # produced several distinct valid novel molecules
+
+
+def test_discovery_ranks_candidates():
+    from chemlab.discovery import discover
+    res = discover(objective="qed", population_size=20, generations=3, top_k=5)
+    assert res["ok"] and res["candidates"]
+    cands = res["candidates"]
+    # composite scores are present and sorted descending
+    scores = [c["composite_score"] for c in cands]
+    assert scores == sorted(scores, reverse=True)
+    assert cands[0]["rank"] == 1
+    for c in cands:
+        assert "activity_score" in c and "admet_score" in c and "synthesizability_score" in c
+
+
+def test_external_db_graceful_when_blocked():
+    from chemlab.external_db import pubchem_by_name
+    res = pubchem_by_name("aspirin")
+    # network is blocked here; must fail gracefully, never raise
+    assert "ok" in res
+    if not res["ok"]:
+        assert "error_fa" in res
+
+
 def test_drug_profile():
     asp = Molecule.parse("آسپرین")
     prof = DrugProfile(asp).to_dict()

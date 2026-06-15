@@ -29,6 +29,10 @@ from .redox import oxidation_states, cell_potential, electrolysis, STANDARD_POTE
 from .admet import admet, interaction
 from .spectra import full_spectra, ir_spectrum, nmr_h_spectrum, mass_spectrum
 from .nlp import parse_scenario
+from .qsar import QSARModel, demo_model, featurize
+from .generator import evolve, mutate, crossover
+from .discovery import discover, candidate_profile, synth_accessibility
+from . import external_db
 
 __version__ = "0.1.0"
 
@@ -49,4 +53,8 @@ __all__ = [
     "admet", "interaction",
     "full_spectra", "ir_spectrum", "nmr_h_spectrum", "mass_spectrum",
     "parse_scenario",
+    "QSARModel", "demo_model", "featurize",
+    "evolve", "mutate", "crossover",
+    "discover", "candidate_profile", "synth_accessibility",
+    "external_db",
 ]

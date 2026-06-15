@@ -1,5 +1,7 @@
 rdkit>=2024.3
 numpy
+scikit-learn
+joblib
 fastapi
 uvicorn[standard]
 pydantic>=2
